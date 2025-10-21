@@ -1,0 +1,50 @@
+# === ARCHIVOS Y CARPETAS DE VISUAL STUDIO ===
+.vs/
+*.vc.db*
+*.VC.opendb
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.cachefile
+*.log
+*.tlog
+*.idb
+*.pdb
+
+# === COMPILADOS ===
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.ilk
+
+# === CARPETAS DE BUILD ===
+x64/
+x86/
+Debug/
+Release/
+[Bb]uild/
+ipch/
+
+*.tmp
+*.temp
+*.bak
+*.old
+
+*.lastbuildstate
+*.VC.db*
+*.opendb
+*.DS_Store
+Thumbs.db
+
+*.yyz
+*.yymps
+*.yyc
+*.yyp.local
+*.win
+*.zip
+
+# === ARCHIVOS DEL SISTEMA ===
+desktop.ini
