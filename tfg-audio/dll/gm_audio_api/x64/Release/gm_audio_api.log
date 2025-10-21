@@ -1,0 +1,10 @@
+﻿  gm_audio_api.cpp
+     Creando biblioteca C:\Users\arodr\OneDrive\Escritorio\TFGs\IngComp\gm-audio-api\tfg-audio\dll\x64\Release\gmaudioapi.lib y objeto C:\Users\arodr\OneDrive\Escritorio\TFGs\IngComp\gm-audio-api\tfg-audio\dll\x64\Release\gmaudioapi.exp
+  Generando código
+  2096 of 2098 functions (99.9%) were compiled, the rest were copied from previous compilation.
+    4 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
+  Generación de código finalizada
+  gm_audio_api.vcxproj -> C:\Users\arodr\OneDrive\Escritorio\TFGs\IngComp\gm-audio-api\tfg-audio\dll\x64\Release\gmaudioapi.dll
+          1 archivo(s) copiado(s).
+  DLL copiada correctamente
