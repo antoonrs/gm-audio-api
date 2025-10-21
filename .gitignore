@@ -1,50 +1,64 @@
-# === ARCHIVOS Y CARPETAS DE VISUAL STUDIO ===
+# ==========================
+# VISUAL STUDIO / C++ BUILD
+# ==========================
 .vs/
 *.vc.db*
 *.VC.opendb
 *.suo
 *.user
-*.userosscache
-*.sdf
-*.cachefile
-*.log
-*.tlog
-*.idb
 *.pdb
-
-# === COMPILADOS ===
+*.idb
 *.obj
-*.exe
-*.dll
-*.lib
-*.exp
+*.tlog
+*.log
+*.lastbuildstate
+*.ipch
+*.pch
 *.ilk
+*.exp
+*.lib
 
-# === CARPETAS DE BUILD ===
 x64/
 x86/
 Debug/
 Release/
 [Bb]uild/
-ipch/
 
+# ==========================
+# ARCHIVOS TEMPORALES
+# ==========================
 *.tmp
 *.temp
 *.bak
 *.old
+*.cache
+*.ncb
 
-*.lastbuildstate
-*.VC.db*
-*.opendb
-*.DS_Store
-Thumbs.db
-
+# ==========================
+# GAME MAKER
+# ==========================
 *.yyz
 *.yymps
 *.yyc
 *.yyp.local
 *.win
 *.zip
+*.bin
+*.dnd
+*.ide
+*.yydebug
+*.yyf
+*.yyp.log
 
-# === ARCHIVOS DEL SISTEMA ===
+# ==========================
+# EXCEPCIONES (mantener la DLL del juego)
+# ==========================
+!tfg-audio/gm/gm_project/datafiles/dll/
+!tfg-audio/gm/gm_project/datafiles/dll/*.dll
+
+# ==========================
+# SISTEMA
+# ==========================
+*.DS_Store
+Thumbs.db
 desktop.ini
