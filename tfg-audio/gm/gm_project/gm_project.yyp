@@ -29,6 +29,9 @@
   "ForcedPrefabProjectReferences":[],
   "IncludedFiles":[
     {"$GMIncludedFile":"","%Name":"gmaudioapi.dll","CopyToMask":-1,"filePath":"datafiles/dll","name":"gmaudioapi.dll","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"drum.wav","CopyToMask":-1,"filePath":"datafiles","name":"drum.wav","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"main.json","CopyToMask":-1,"filePath":"datafiles/presets","name":"main.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"snare.wav","CopyToMask":-1,"filePath":"datafiles","name":"snare.wav","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"test.mp3","CopyToMask":-1,"filePath":"datafiles","name":"test.mp3","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
   ],
   "isEcma":false,
