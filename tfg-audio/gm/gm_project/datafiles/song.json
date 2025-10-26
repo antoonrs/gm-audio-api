@@ -1,0 +1,10 @@
+{
+  "bpm": 120,
+  "beatsPerBar": 4,
+  "bars": 1,
+  "loop": true,
+  "events": [
+    { "file": "drum.wav", "beat": 0 },
+    { "file": "snare.wav", "beat": 2 }
+  ]
+}

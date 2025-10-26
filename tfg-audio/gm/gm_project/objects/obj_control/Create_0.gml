@@ -45,3 +45,29 @@ if (file_exists(preset_path)) {
 }
 external_call(global.ext.tplay);
 
+
+
+
+global.ext.songLoad  = external_define(dll,"gm_audio_song_load_file", dll_cdecl, ty_real, 1, ty_string);
+global.ext.songPlay  = external_define(dll,"gm_audio_song_play",      dll_cdecl, ty_real, 0);
+global.ext.songStop  = external_define(dll,"gm_audio_song_stop",      dll_cdecl, ty_real, 0);
+global.ext.songLoop  = external_define(dll,"gm_audio_song_set_loop",  dll_cdecl, ty_real, 1, ty_real);
+
+// Rutas
+song_path = working_directory + "song.json";
+
+// Carga y arranca
+if (file_exists(song_path)) {
+    external_call(global.ext.songLoad, song_path);
+}
+external_call(global.ext.tplay);
+external_call(global.ext.songPlay);
+
+
+//show_debug_message("song.json existe? " + string(file_exists(song_path)));
+
+//var okLoad = external_call(global.ext.songLoad, song_path);
+//show_debug_message("songLoad=" + string(okLoad));
+
+//var okPlay = external_call(global.ext.songPlay);
+//show_debug_message("songPlay=" + string(okPlay));
