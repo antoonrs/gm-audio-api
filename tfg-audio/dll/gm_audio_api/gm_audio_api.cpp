@@ -29,26 +29,21 @@ Requisitos:
 #include <sstream>
 #include <regex>
 #include <cctype>
+#include <algorithm>
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Estado global del engine y recursos basicos
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// Motor de miniaudio
 static ma_engine gEngine;
 static bool gEngineIniciado = false;
 
-// Mapas de sonidos activos y su posicion pausada (en frames PCM)
-static std::unordered_map<int, ma_sound*> gSounds;
+static std::unordered_map<int, ma_sound*> gSounds; // id -> ma_sound* (dinámicos)
 static std::unordered_map<int, ma_uint64> gPausedFrame;
 
-// protege todas las estructuras globales mediante mutex
 static std::mutex gMutex;
-// generador atomico de IDS
 static std::atomic<int> gNextId{ 1 };
 static inline int makeId() { return gNextId.fetch_add(1); }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // TRANSPORT MUSICAL bpm y reloj de beats
@@ -91,15 +86,105 @@ struct PendingLaunch {
     double targetBeat;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////
-// UTILDADES DE ARCHIVO Y PARSER JSON
-////////////////////////////////////////////////////////////////////////////////////////
 static std::vector<PendingLaunch> gQueue;
 static std::vector<ActiveVoice> gActiveVoices;
 static std::vector<PendingStop> gPendingStops;
 static std::vector<ma_sound*> gPendingDelete;
 
-// Lee un archivo de texto completo a memoria
+////////////////////////////////////////////////////////////////////////////////////////
+// BUS
+// - estructura y helpers mínimos para agrupar fuentes por bus y aplicar volumen/mute/pan
+////////////////////////////////////////////////////////////////////////////////////////
+
+struct SoundMeta {
+    ma_sound* sound = nullptr;
+    int busId = 0;
+    float localVol = 1.0f;
+    float pan = 0.0f;
+};
+
+struct Bus {
+    int id = 0;
+    std::string name;
+    float volume = 1.0f;
+    float pan = 0.0f;
+    bool mute = false;
+    std::vector<int> sourceIds;
+    std::vector<std::pair<ma_sound*, float>> sourceSounds;
+    float peak = 0.0f;
+    float rms = 0.0f;
+};
+
+static std::unordered_map<int, Bus> gBuses;
+static std::unordered_map<int, SoundMeta> gSoundMeta;
+static std::atomic<int> gNextBusId{ 1 };
+static inline int makeBusId() { return gNextBusId.fetch_add(1); }
+
+static void ensure_master_bus_locked() {
+    if (gBuses.find(0) == gBuses.end()) {
+        Bus m; m.id = 0; m.name = "master"; m.volume = 1.0f; m.pan = 0.0f; m.mute = false;
+        gBuses[0] = m;
+    }
+}
+
+static void apply_bus_volume_locked(int busId) {
+    auto itb = gBuses.find(busId);
+    if (itb == gBuses.end()) return;
+    Bus& b = itb->second;
+    float busVol = b.mute ? 0.0f : b.volume;
+    for (int sid : b.sourceIds) {
+        auto it = gSoundMeta.find(sid);
+        if (it != gSoundMeta.end() && it->second.sound) {
+            float finalVol = it->second.localVol * busVol;
+            ma_sound_set_volume(it->second.sound, finalVol);
+        }
+    }
+
+    for (auto& p : b.sourceSounds) {
+        ma_sound* s = p.first;
+        float local = p.second;
+        if (s) {
+            ma_sound_set_volume(s, local * busVol);
+        }
+    }
+}
+
+static void remove_sound_from_bus_locked(int soundId) {
+    for (auto& kv : gBuses) {
+        Bus& b = kv.second;
+        auto it = std::find(b.sourceIds.begin(), b.sourceIds.end(), soundId);
+        if (it != b.sourceIds.end()) {
+            b.sourceIds.erase(it);
+            break;
+        }
+    }
+}
+
+static void remove_sound_ptr_from_bus_locked(ma_sound* s) {
+    if (!s) return;
+    for (auto& kv : gBuses) {
+        Bus& b = kv.second;
+        for (auto it = b.sourceSounds.begin(); it != b.sourceSounds.end(); ++it) {
+            if (it->first == s) { b.sourceSounds.erase(it); return; }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// UTILDADES DE ARCHIVO Y PARSER JSON
+////////////////////////////////////////////////////////////////////////////////////////
+static std::string path_dirname(const std::string& p) {
+    size_t i = p.find_last_of("/\\");
+    return (i == std::string::npos) ? std::string() : p.substr(0, i + 1);
+}
+static std::string path_join(const std::string& a, const std::string& b) {
+    if (a.empty()) return b;
+    if (b.empty()) return a;
+    char last = a.back();
+    if (last == '\\' || last == '/') return a + b;
+    return a + "\\" + b;
+}
+
 static bool readTextFile(const char* path, std::string& out) {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs) return false;
@@ -109,7 +194,6 @@ static bool readTextFile(const char* path, std::string& out) {
     return true;
 }
 
-// Extrae el valor numerico de bpm desde un JSON
 static bool json_extract_bpm(const std::string& txt, double& bpmOut) {
     static const std::regex re(R"("bpm"\s*:\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?))");
     std::smatch m;
@@ -123,18 +207,6 @@ static bool json_extract_bpm(const std::string& txt, double& bpmOut) {
         }
     }
     return false;
-}
-
-static std::string path_dirname(const std::string& p) {
-    size_t i = p.find_last_of("/\\");
-    return (i == std::string::npos) ? std::string() : p.substr(0, i + 1);
-}
-static std::string path_join(const std::string& a, const std::string& b) {
-    if (a.empty()) return b;
-    if (b.empty()) return a;
-    char last = a.back();
-    if (last == '\\' || last == '/') return a + b;
-    return a + "\\" + b;
 }
 
 static int note_name_to_midi(const std::string& note) {
@@ -160,13 +232,10 @@ static double pitch_from_semitones(double delta, double cents = 0.0) {
     return std::pow(2.0, (delta + cents / 100.0) / 12.0);
 }
 
-
 static void schedule_sound_delete(ma_sound* s) {
     if (!s) return;
-    // añadimos a la lista de borrado diferido (el caller debe tomar gMutex)
     gPendingDelete.push_back(s);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // SECUENCIADOR DE CANCION
@@ -179,6 +248,7 @@ struct SongEvent {
     double dur = 0.0;
     float vel = 1.0f;
     bool active = true;
+    int bus = 0;
 };
 
 struct Song {
@@ -195,7 +265,9 @@ static bool json_extract_bool(const std::string& txt, const char* key, bool& out
     std::smatch m;
     if (std::regex_search(txt, m, re) && m.size() >= 2) {
         std::string v = m[1].str();
-        out = (v == "true" || v == "TRUE");
+        std::string vl = v;
+        for (auto& c : vl) c = (char)tolower(c);
+        out = (vl == "true");
         return true;
     }
     return false;
@@ -213,14 +285,15 @@ static bool json_extract_int(const std::string& txt, const char* key, int& out) 
 
 static bool json_extract_events(const std::string& txt, std::vector<SongEvent>& out) {
     out.clear();
-    const std::regex reFile(R"(\{\s*\"file\"\s*:\s*\"([^\"]+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*\})");
-    const std::regex reNote(R"(\{\s*\"note\"\s*:\s*\"([A-Ga-g][#b]?\-?\d+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*\})");
+    const std::regex reFile(R"(\{\s*\"file\"\s*:\s*\"([^\"]+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*\})");
+    const std::regex reNote(R"(\{\s*\"note\"\s*:\s*\"([A-Ga-g][#b]?\-?\d+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*\})");
     for (auto it = std::sregex_iterator(txt.begin(), txt.end(), reFile); it != std::sregex_iterator(); ++it) {
         SongEvent ev;
         ev.path = (*it)[1].str();
         ev.offsetBeat = std::stod((*it)[2].str());
         if ((*it).size() >= 3 && (*it)[3].matched) ev.dur = std::stod((*it)[3].str());
         if ((*it).size() >= 4 && (*it)[4].matched) ev.vel = (float)std::stod((*it)[4].str());
+        if ((*it).size() >= 5 && (*it)[5].matched) ev.bus = std::stoi((*it)[5].str());
         out.push_back(ev);
     }
     for (auto it = std::sregex_iterator(txt.begin(), txt.end(), reNote); it != std::sregex_iterator(); ++it) {
@@ -229,15 +302,11 @@ static bool json_extract_events(const std::string& txt, std::vector<SongEvent>& 
         ev.offsetBeat = std::stod((*it)[2].str());
         if ((*it).size() >= 3 && (*it)[3].matched) ev.dur = std::stod((*it)[3].str());
         if ((*it).size() >= 4 && (*it)[4].matched) ev.vel = (float)std::stod((*it)[4].str());
+        if ((*it).size() >= 5 && (*it)[5].matched) ev.bus = std::stoi((*it)[5].str());
         out.push_back(ev);
     }
     return !out.empty();
 }
-
-
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +315,6 @@ static bool json_extract_events(const std::string& txt, std::vector<SongEvent>& 
 ////////////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-
 
     // Inicializa miniaudio y limpia estados
     __declspec(dllexport) double gm_audio_init() {
@@ -257,16 +325,22 @@ extern "C" {
         if (res == MA_SUCCESS) {
             gEngineIniciado = true;
 
-            // Resetea estructuras globales
             gSounds.clear();
             gPausedFrame.clear();
             gQueue.clear();
+            gSong = Song{};
+            gActiveVoices.clear();
+            gPendingStops.clear();
+            gPendingDelete.clear();
+            gSoundMeta.clear();
+            gBuses.clear();
+            gNextBusId.store(1);
 
-            // Transport por defecto
+            ensure_master_bus_locked();
+
             gTransport.playing.store(false);
             gTransport.bpm.store(120.0);
             gTransport.baseBeat = 0.0;
-
             return 1.0;
         }
         return 0.0;
@@ -276,19 +350,20 @@ extern "C" {
     __declspec(dllexport) double gm_audio_shutdown() {
         std::lock_guard<std::mutex> lock(gMutex);
         if (!gEngineIniciado) return 1.0;
+
         for (auto& kv : gSounds) {
             schedule_sound_delete(kv.second);
         }
         gSounds.clear();
         gPausedFrame.clear();
-        gQueue.clear();
+
         for (auto& ev : gSong.events) {
             if (ev.sound) {
                 schedule_sound_delete(ev.sound);
                 ev.sound = nullptr;
             }
         }
-        gSong = Song{};
+
         for (auto& av : gActiveVoices) {
             if (av.sound) {
                 ma_sound_stop(av.sound);
@@ -298,20 +373,31 @@ extern "C" {
         }
         gActiveVoices.clear();
         gPendingStops.clear();
-        // NOTA: la destrucción real ocurre en gm_audio_transport_tick()
+
+        if (!gPendingDelete.empty()) {
+            for (ma_sound* s : gPendingDelete) {
+                if (s) {
+                    ma_sound_stop(s);
+                    ma_sound_uninit(s);
+                    delete s;
+                }
+            }
+            gPendingDelete.clear();
+        }
+
         ma_engine_uninit(&gEngine);
         gEngineIniciado = false;
+
+        gBuses.clear();
+        gSoundMeta.clear();
+
         return 1.0;
     }
-
-
-
 
     ////////////////////////////////////////////////////////////////////////////////////////
     // REPRODUCCION BASICA
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    // Crea y reproduce un sonido desde archivo
     __declspec(dllexport) double gm_audio_play(const char* path) {
         if (!gEngineIniciado || path == nullptr) return 0.0;
         std::lock_guard<std::mutex> lock(gMutex);
@@ -325,9 +411,26 @@ extern "C" {
         int id = makeId();
         gSounds[id] = s;
         gPausedFrame.erase(id);
+
+        SoundMeta meta;
+        meta.sound = s;
+        meta.busId = 0;
+        meta.localVol = 1.0f;
+        meta.pan = 0.0f;
+        gSoundMeta[id] = meta;
+        ensure_master_bus_locked();
+        gBuses[0].sourceIds.push_back(id);
+
+        // aplicar volumen y pan del bus master
+        float busVol = gBuses[0].mute ? 0.0f : gBuses[0].volume;
+        ma_sound_set_volume(s, 1.0f * busVol);
+        float busPan = gBuses[0].pan;
+        if (busPan < -1.0f) busPan = -1.0f;
+        if (busPan > 1.0f) busPan = 1.0f;
+        ma_sound_set_pan(s, busPan);
+
         return (double)id;
     }
-
 
     // Detiene y destruye un sonido existente por ID
     __declspec(dllexport) double gm_audio_stop(double idd) {
@@ -337,11 +440,12 @@ extern "C" {
         if (it == gSounds.end()) return 0.0;
         ma_sound_stop(it->second);
         schedule_sound_delete(it->second);
+        remove_sound_from_bus_locked(id);
         gSounds.erase(it);
         gPausedFrame.erase(id);
+        gSoundMeta.erase(id);
         return 1.0;
     }
-
 
     // Pausa guarda la posicion en frames y para el sonido
     // Devuelve 1 si ok, 0 si el ID no existe o get_cursor falla
@@ -357,7 +461,6 @@ extern "C" {
         ma_sound_stop(it->second);
         return 1.0;
     }
-
 
     // Resume si hay una posicion almacenada, hace seek y arranca
     // Devuelve 1 si arranca, 0 si algo falla o no existe el ID
@@ -378,7 +481,6 @@ extern "C" {
         return 1.0;
     }
 
-
     // Volumen de 0 a 1
     __declspec(dllexport) double gm_audio_set_volume(double idd, double v) {
         int id = (int)idd;
@@ -388,10 +490,20 @@ extern "C" {
         std::lock_guard<std::mutex> lock(gMutex);
         auto it = gSounds.find(id);
         if (it == gSounds.end()) return 0.0;
-        ma_sound_set_volume(it->second, vol);
+        auto mit = gSoundMeta.find(id);
+        if (mit != gSoundMeta.end()) {
+            mit->second.localVol = vol;
+            int busId = mit->second.busId;
+            float busVol = 1.0f;
+            auto bit = gBuses.find(busId);
+            if (bit != gBuses.end()) busVol = bit->second.mute ? 0.0f : bit->second.volume;
+            ma_sound_set_volume(it->second, vol * busVol);
+        }
+        else {
+            ma_sound_set_volume(it->second, vol);
+        }
         return 1.0;
     }
-
 
     // Loop on/off
     __declspec(dllexport) double gm_audio_set_loop(double idd, double flag) {
@@ -403,10 +515,6 @@ extern "C" {
         ma_sound_set_looping(it->second, loop);
         return 1.0;
     }
-
-
-
-
 
     ////////////////////////////////////////////////////////////////////////////////////////
     // TRANSPORT
@@ -423,7 +531,6 @@ extern "C" {
         return 1.0;
     }
 
-
     // Pausa el transport acumulando el beat actual en baseBeat
     __declspec(dllexport) double gm_audio_transport_pause() {
         std::lock_guard<std::mutex> lock(gMutex);
@@ -434,7 +541,6 @@ extern "C" {
         }
         return 1.0;
     }
-
 
     // Para el transport y resetea el contador a 0.
     __declspec(dllexport) double gm_audio_transport_stop() {
@@ -481,9 +587,6 @@ extern "C" {
         return 1.0;
     }
 
-
-
-
     // Cambia el BPM manteniendo la continuidad del beat
     __declspec(dllexport) double gm_audio_set_tempo(double bpm) {
         std::lock_guard<std::mutex> lock(gMutex);
@@ -507,18 +610,11 @@ extern "C" {
         return 1.0;
     }
 
-
-
     // Devuelve el beat actual como double
     __declspec(dllexport) double gm_audio_get_beat_position() {
         std::lock_guard<std::mutex> lock(gMutex);
         return transport_get_beat_unlocked();
     }
-
-
-
-
-
 
     ////////////////////////////////////////////////////////////////////////////////////////
     // Preset JSON
@@ -551,9 +647,6 @@ extern "C" {
         return 1.0;
     }
 
-
-
-
     ////////////////////////////////////////////////////////////////////////////////////////
     // Lanzamiento cuantizado al beat
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -573,6 +666,25 @@ extern "C" {
         gSounds[id] = s;
         gPausedFrame.erase(id);
 
+        SoundMeta meta;
+        meta.sound = s;
+        meta.busId = 0;
+        meta.localVol = 1.0f;
+        meta.pan = 0.0f;
+        gSoundMeta[id] = meta;
+        ensure_master_bus_locked();
+        gBuses[0].sourceIds.push_back(id);
+
+        // aplicar volumen y pan del master
+        float busVol = gBuses[0].mute ? 0.0f : gBuses[0].volume;
+        ma_sound_set_volume(s, 1.0f * busVol);
+        float busPan = gBuses[0].pan;
+        if (busPan < -1.0f) busPan = -1.0f;
+        if (busPan > 1.0f) busPan = 1.0f;
+        ma_sound_set_pan(s, busPan);
+
+        apply_bus_volume_locked(0);
+
         // Calcula el siguiente grid en beats
         const double nowBeat = transport_get_beat_unlocked();
         const double q = quant_beats;
@@ -582,10 +694,6 @@ extern "C" {
         gQueue.push_back({ id, next });
         return (double)id;
     }
-
-
-
-
 
     // Tick del transport: revisa la cola y dispara los sonidos cuyo targetBeat llegue
     __declspec(dllexport) double gm_audio_transport_tick() {
@@ -709,18 +817,16 @@ extern "C" {
         return 1.0;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////
+    // Carga de canción desde JSON
+    ////////////////////////////////////////////////////////////////////////////////////////
 
-
-
-
-    // Carga una cancion desde JSON (ruta en disco). Pre-carga los wav como ma_sound.
     __declspec(dllexport) double gm_audio_song_load_file(const char* pathJson) {
         if (!gEngineIniciado || pathJson == nullptr) return 0.0;
         std::lock_guard<std::mutex> lock(gMutex);
         std::string txt;
         if (!readTextFile(pathJson, txt)) return 0.0;
         std::string baseDir = path_dirname(pathJson);
-
 
         // Parametros por defecto
         int beatsPerBar = 4;
@@ -755,6 +861,11 @@ extern "C" {
         }
         gSong = Song{};
 
+        ensure_master_bus_locked();
+
+        std::vector<SongEvent> loadedEvents;
+        loadedEvents.reserve(evs.size());
+
         std::regex reInstr(R"("instrument"\s*:\s*\{\s*\"file\"\s*:\s*\"([^\"]+)\"(?:\s*,\s*\"baseNote\"\s*:\s*([-]?\d+))?(?:\s*,\s*\"tuningHz\"\s*:\s*([0-9.]+))?)", std::regex::icase);
         std::smatch mInstr;
         std::string globalInstrFile;
@@ -765,9 +876,6 @@ extern "C" {
             if (mInstr.size() >= 3 && mInstr[2].matched) globalBaseNote = std::stoi(mInstr[2].str());
             if (mInstr.size() >= 4 && mInstr[3].matched) globalTuningHz = std::stod(mInstr[3].str());
         }
-
-        std::vector<SongEvent> loadedEvents;
-        loadedEvents.reserve(evs.size());
 
         for (auto& ev : evs) {
             if (ev.path.rfind("NOTE:", 0) == 0) {
@@ -789,6 +897,7 @@ extern "C" {
                 sev.active = true;
                 sev.dur = ev.dur;
                 sev.vel = (float)vel;
+                sev.bus = ev.bus;
                 if (globalInstrFile.empty()) {
                     for (auto& le : loadedEvents) {
                         if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
@@ -819,6 +928,23 @@ extern "C" {
                 sev.dur = ev.dur;
                 sev.vel = ev.vel;
                 sev.active = true;
+                sev.bus = ev.bus;
+                ensure_master_bus_locked();
+                int busId = sev.bus;
+                if (gBuses.find(busId) == gBuses.end()) {
+                    Bus nb; nb.id = busId; nb.name = "bus" + std::to_string(busId); nb.volume = 1.0f; nb.pan = 0.0f; nb.mute = false;
+                    gBuses[busId] = nb;
+                }
+                gBuses[busId].sourceSounds.emplace_back(sev.sound, sev.vel);
+                float busVol = gBuses[busId].mute ? 0.0f : gBuses[busId].volume;
+                ma_sound_set_volume(sev.sound, (float)sev.vel * busVol);
+                
+                float busPan = gBuses[busId].pan;
+                if (busPan < -1.0f) busPan = -1.0f;
+                if (busPan > 1.0f) busPan = 1.0f;
+                ma_sound_set_pan(sev.sound, busPan);
+
+
                 loadedEvents.push_back(sev);
             }
         }
@@ -848,9 +974,6 @@ extern "C" {
         return 1.0;
     }
 
-
-
-
     // Para o limpia el estado de la cancion
     __declspec(dllexport) double gm_audio_song_stop() {
         std::lock_guard<std::mutex> lock(gMutex);
@@ -859,6 +982,12 @@ extern "C" {
             if (ev.sound) ma_sound_stop(ev.sound);
             ev.active = false;
             ev.nextBeat = 0.0;
+            // BUS
+            remove_sound_ptr_from_bus_locked(ev.sound);
+            if (ev.sound) {
+                schedule_sound_delete(ev.sound);
+                ev.sound = nullptr;
+            }
         }
         for (auto& ps : gPendingStops) {
             if (ps.voice) {
@@ -879,9 +1008,6 @@ extern "C" {
         return 1.0;
     }
 
-
-
-
     // Cambia el loop de la cancion
     __declspec(dllexport) double gm_audio_song_set_loop(double flag) {
         std::lock_guard<std::mutex> lock(gMutex);
@@ -889,5 +1015,131 @@ extern "C" {
         gSong.loop = (flag != 0.0);
         return 1.0;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+    // BUSES
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    __declspec(dllexport) double gm_audio_bus_create() {
+        std::lock_guard<std::mutex> lock(gMutex);
+        ensure_master_bus_locked();
+        int id = makeBusId();
+        Bus b; b.id = id; b.name = "bus" + std::to_string(id); b.volume = 1.0f; b.pan = 0.0f; b.mute = false;
+        gBuses[id] = b;
+        return (double)id;
+    }
+
+    __declspec(dllexport) double gm_audio_bus_destroy(double bid) {
+        std::lock_guard<std::mutex> lock(gMutex);
+        int id = (int)bid;
+        auto it = gBuses.find(id);
+        if (it == gBuses.end()) return 0.0;
+        for (int sid : it->second.sourceIds) {
+            auto mit = gSoundMeta.find(sid);
+            if (mit != gSoundMeta.end()) {
+                mit->second.busId = 0;
+                gBuses[0].sourceIds.push_back(sid);
+            }
+        }
+        for (auto& p : it->second.sourceSounds) {
+            gBuses[0].sourceSounds.push_back(p);
+        }
+        gBuses.erase(it);
+        apply_bus_volume_locked(0);
+        return 1.0;
+    }
+
+    __declspec(dllexport) double gm_audio_bus_set_volume(double bid, double v) {
+        std::lock_guard<std::mutex> lock(gMutex);
+        int id = (int)bid;
+        float vol = (float)v;
+        if (vol < 0.f) vol = 0.f;
+        if (vol > 4.f) vol = 4.f;
+        auto it = gBuses.find(id);
+        if (it == gBuses.end()) return 0.0;
+        it->second.volume = vol;
+        apply_bus_volume_locked(id);
+        return 1.0;
+    }
+
+    __declspec(dllexport) double gm_audio_bus_set_mute(double bid, double flag) {
+        std::lock_guard<std::mutex> lock(gMutex);
+        int id = (int)bid;
+        auto it = gBuses.find(id);
+        if (it == gBuses.end()) return 0.0;
+        it->second.mute = (flag != 0.0);
+        apply_bus_volume_locked(id);
+        return 1.0;
+    }
+
+    __declspec(dllexport) double gm_audio_assign_to_bus(double soundIdd, double busIdd) {
+        int sid = (int)soundIdd;
+        int bid = (int)busIdd;
+        std::lock_guard<std::mutex> lock(gMutex);
+        auto sit = gSounds.find(sid);
+        if (sit == gSounds.end()) return 0.0;
+        auto mit = gSoundMeta.find(sid);
+        if (mit == gSoundMeta.end()) return 0.0;
+
+        remove_sound_from_bus_locked(sid);
+
+        if (gBuses.find(bid) == gBuses.end()) {
+            Bus nb; nb.id = bid; nb.name = "bus" + std::to_string(bid); nb.volume = 1.0f; nb.pan = 0.0f; nb.mute = false;
+            gBuses[bid] = nb;
+        }
+
+        mit->second.busId = bid;
+        gBuses[bid].sourceIds.push_back(sid);
+
+        apply_bus_volume_locked(bid);
+
+        if (mit->second.sound) {
+            float pan = gBuses[bid].pan;
+            if (pan < -1.0f) pan = -1.0f;
+            if (pan > 1.0f) pan = 1.0f;
+            ma_sound_set_pan(mit->second.sound, pan);
+        }
+
+        return 1.0;
+    }
+
+
+    __declspec(dllexport) double gm_audio_bus_set_pan(double busIdd, double pand)
+    {
+        int busId = (int)busIdd;
+        float pan = (float)pand;
+
+        if (pan < -1.f) pan = -1.f;
+        if (pan > 1.f) pan = 1.f;
+
+        std::lock_guard<std::mutex> lock(gMutex);
+
+        auto it = gBuses.find(busId);
+        if (it == gBuses.end())
+            return 0.0;
+
+        it->second.pan = pan;
+
+        for (int sid : it->second.sourceIds)
+        {
+            auto its = gSounds.find(sid);
+            if (its != gSounds.end() && its->second)
+            {
+                ma_sound_set_pan(its->second, pan);
+            }
+        }
+
+        for (auto& p : it->second.sourceSounds)
+        {
+            ma_sound* s = p.first;
+            if (s) {
+                ma_sound_set_pan(s, pan);
+            }
+        }
+
+        return 1.0;
+    }
+
+
 
 } // extern "C"

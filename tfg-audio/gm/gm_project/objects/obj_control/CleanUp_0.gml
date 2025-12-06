@@ -1,1 +1,0 @@
-external_call(global.ext.shutdown);
