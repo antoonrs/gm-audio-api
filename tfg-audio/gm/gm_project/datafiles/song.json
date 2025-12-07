@@ -1,7 +1,7 @@
 {
   "bpm": 120,
   "beatsPerBar": 8,
-  "bars": 2,
+  "bars": 4,
   "loop": true,
 
   "instrument": {
@@ -11,23 +11,68 @@
   },
 
   "events": [
-    { "note": "C4", "beat": 0.0, "dur": 0.2, "vel": 0.9, "bus": 2 },
-    { "note": "E4", "beat": 0.0, "dur": 0.2, "vel": 0.9, "bus": 2 },
-    { "note": "D4", "beat": 1.0, "dur": 0.2, "vel": 0.9, "bus": 2 },
-    { "note": "F4", "beat": 1.0, "dur": 0.2, "vel": 0.9, "bus": 2 },
-    { "note": "E4", "beat": 2.0, "dur": 0.2, "vel": 0.9, "bus": 2 },
-    { "note": "G4", "beat": 2.0, "dur": 0.2, "vel": 0.9, "bus": 2 },
-    { "note": "C5", "beat": 4.0, "dur": 1.0, "vel": 0.5, "bus": 2 },
-    { "note": "D5", "beat": 5.0, "dur": 1.0, "vel": 0.5, "bus": 2 },
-    { "note": "E5", "beat": 6.0, "dur": 1.0, "vel": 0.5, "bus": 2 },
-    { "note": "E5", "beat": 4.0, "dur": 1.0, "vel": 0.5, "bus": 2 },
-    { "note": "F5", "beat": 5.0, "dur": 1.0, "vel": 0.5, "bus": 2 },
-    { "note": "G5", "beat": 6.0, "dur": 1.0, "vel": 0.5, "bus": 2 },
+
+    { "file": "square_C4.mp3", "beat": 0.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+    { "file": "square_C4.mp3", "beat": 1.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+    { "file": "square_C4.mp3", "beat": 2.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+
+    { "file": "triangle_C4.mp3", "beat": 0.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 0.5, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 1.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 1.5, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 2.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+
+    { "note": "D4", "beat": 0.0, "dur": 0.5, "vel": 0.9, "bus": 2 },
+    { "note": "F4", "beat": 1.0, "dur": 0.5, "vel": 0.9, "bus": 2 },
+    { "note": "A4", "beat": 2.0, "dur": 0.5, "vel": 0.9, "bus": 2 },
 
     { "file": "drum.wav",  "beat": 0.0, "bus": 1 },
-    { "file": "drum.wav",  "beat": 1.5, "bus": 1 },
     { "file": "snare.wav", "beat": 2.0, "bus": 1 },
-    { "file": "drum.wav",  "beat": 4.0, "bus": 1 },
-    { "file": "snare.wav", "beat": 6.0, "bus": 1 }
+    { "file": "drum.wav",  "beat": 3.0, "bus": 1 },
+
+    { "file": "square_C4.mp3", "beat": 8.0,  "dur": 0.4, "vel": 0.8, "bus": 3 },
+    { "file": "square_C4.mp3", "beat": 9.0,  "dur": 0.4, "vel": 0.8, "bus": 3 },
+    { "file": "square_C4.mp3", "beat": 10.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+
+    { "file": "triangle_C4.mp3", "beat": 8.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 8.5, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 9.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 9.5, "dur": 0.2, "vel": 0.6, "bus": 4 },
+
+    { "note": "Bb4", "beat": 8.0, "dur": 0.5, "vel": 0.8, "bus": 2 },
+    { "note": "D5",  "beat": 9.0, "dur": 0.5, "vel": 0.8, "bus": 2 },
+    { "note": "F5",  "beat": 10.0, "dur": 0.5, "vel": 0.8, "bus": 2 },
+
+    { "file": "drum.wav",  "beat": 8.0, "bus": 1 },
+    { "file": "snare.wav", "beat": 10.0, "bus": 1 },
+
+    { "file": "square_C4.mp3", "beat": 16.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+    { "file": "square_C4.mp3", "beat": 17.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+
+    { "file": "triangle_C4.mp3", "beat": 16.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 16.5, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 17.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+
+    { "note": "F4", "beat": 16.0, "dur": 0.4, "vel": 0.9, "bus": 2 },
+    { "note": "A4", "beat": 17.0, "dur": 0.4, "vel": 0.9, "bus": 2 },
+    { "note": "C5", "beat": 18.0, "dur": 0.6, "vel": 0.9, "bus": 2 },
+    { "note": "E5", "beat": 19.0, "dur": 0.6, "vel": 0.8, "bus": 2 },
+
+    { "file": "drum.wav",  "beat": 16.0, "bus": 1 },
+    { "file": "snare.wav", "beat": 18.0, "bus": 1 },
+
+    { "file": "square_C4.mp3", "beat": 24.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+    { "file": "square_C4.mp3", "beat": 25.0, "dur": 0.4, "vel": 0.8, "bus": 3 },
+
+    { "file": "triangle_C4.mp3", "beat": 24.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 24.5, "dur": 0.2, "vel": 0.6, "bus": 4 },
+    { "file": "triangle_C4.mp3", "beat": 25.0, "dur": 0.2, "vel": 0.6, "bus": 4 },
+
+    { "note": "G4", "beat": 24.0, "dur": 0.5, "vel": 0.8, "bus": 2 },
+    { "note": "B4", "beat": 25.0, "dur": 0.5, "vel": 0.8, "bus": 2 },
+    { "note": "D5", "beat": 26.0, "dur": 1.0, "vel": 0.7, "bus": 2 },
+
+    { "file": "drum.wav",  "beat": 24.0, "bus": 1 },
+    { "file": "snare.wav", "beat": 26.0, "bus": 1 }
   ]
 }

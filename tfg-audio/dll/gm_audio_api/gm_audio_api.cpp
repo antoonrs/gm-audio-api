@@ -89,6 +89,7 @@ struct PendingLaunch {
 static std::vector<PendingLaunch> gQueue;
 static std::vector<ActiveVoice> gActiveVoices;
 static std::vector<PendingStop> gPendingStops;
+// gPendingDelete guarda punteros pendientes que NO se eliminaran hasta shutdown
 static std::vector<ma_sound*> gPendingDelete;
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -232,8 +233,13 @@ static double pitch_from_semitones(double delta, double cents = 0.0) {
     return std::pow(2.0, (delta + cents / 100.0) / 12.0);
 }
 
+// Evita borrar objetos de miniaudio mientras el engine está activo (previene concidiones de carrera con hilos internos de miniaudio)
 static void schedule_sound_delete(ma_sound* s) {
     if (!s) return;
+    // Añadir solo si no esta ya en la cola
+    for (auto existing : gPendingDelete) {
+        if (existing == s) return;
+    }
     gPendingDelete.push_back(s);
 }
 
@@ -351,22 +357,30 @@ extern "C" {
         std::lock_guard<std::mutex> lock(gMutex);
         if (!gEngineIniciado) return 1.0;
 
+        // Parar y encolar borrado de sounds registrados en gSounds
         for (auto& kv : gSounds) {
+            // quitar posibles referencias en buses antes de programar borrado
+            remove_sound_ptr_from_bus_locked(kv.second);
             schedule_sound_delete(kv.second);
         }
         gSounds.clear();
         gPausedFrame.clear();
 
+        // Encolar borrado de sonidos asociados a la cancion
         for (auto& ev : gSong.events) {
             if (ev.sound) {
+                remove_sound_ptr_from_bus_locked(ev.sound); // quitar de buses antes de programar borrado
                 schedule_sound_delete(ev.sound);
                 ev.sound = nullptr;
             }
         }
+        gSong = Song{};
 
+        // Encolar borrado de voces activas
         for (auto& av : gActiveVoices) {
             if (av.sound) {
-                ma_sound_stop(av.sound);
+                ma_sound_stop(av.sound); // detener primero
+                remove_sound_ptr_from_bus_locked(av.sound);
                 schedule_sound_delete(av.sound);
                 av.sound = nullptr;
             }
@@ -374,6 +388,7 @@ extern "C" {
         gActiveVoices.clear();
         gPendingStops.clear();
 
+        // AHORA que todo está encolado y no habra uso posterior, procesar borrados diferidos y liberar recursos
         if (!gPendingDelete.empty()) {
             for (ma_sound* s : gPendingDelete) {
                 if (s) {
@@ -439,8 +454,11 @@ extern "C" {
         auto it = gSounds.find(id);
         if (it == gSounds.end()) return 0.0;
         ma_sound_stop(it->second);
-        schedule_sound_delete(it->second);
+
+        remove_sound_ptr_from_bus_locked(it->second);
         remove_sound_from_bus_locked(id);
+
+        schedule_sound_delete(it->second);
         gSounds.erase(it);
         gPausedFrame.erase(id);
         gSoundMeta.erase(id);
@@ -558,6 +576,7 @@ extern "C" {
         for (auto& ps : gPendingStops) {
             if (ps.voice) {
                 ma_sound_stop(ps.voice);
+                remove_sound_ptr_from_bus_locked(ps.voice);
                 schedule_sound_delete(ps.voice);
                 ps.voice = nullptr;
             }
@@ -568,6 +587,7 @@ extern "C" {
         for (auto& av : gActiveVoices) {
             if (av.sound) {
                 ma_sound_stop(av.sound);
+                remove_sound_ptr_from_bus_locked(av.sound);
                 schedule_sound_delete(av.sound);
                 av.sound = nullptr;
             }
@@ -802,18 +822,6 @@ extern "C" {
             }
         }
 
-        // Procesar destrucción diferida de ma_sound
-        if (!gPendingDelete.empty()) {
-            for (ma_sound* s : gPendingDelete) {
-                if (s) {
-                    ma_sound_stop(s);
-                    ma_sound_uninit(s);
-                    delete s;
-                }
-            }
-            gPendingDelete.clear();
-        }
-
         return 1.0;
     }
 
@@ -855,6 +863,7 @@ extern "C" {
         // Liberar cancion previa
         for (auto& ev : gSong.events) {
             if (ev.sound) {
+                remove_sound_ptr_from_bus_locked(ev.sound);
                 schedule_sound_delete(ev.sound);
                 ev.sound = nullptr;
             }
@@ -938,7 +947,7 @@ extern "C" {
                 gBuses[busId].sourceSounds.emplace_back(sev.sound, sev.vel);
                 float busVol = gBuses[busId].mute ? 0.0f : gBuses[busId].volume;
                 ma_sound_set_volume(sev.sound, (float)sev.vel * busVol);
-                
+
                 float busPan = gBuses[busId].pan;
                 if (busPan < -1.0f) busPan = -1.0f;
                 if (busPan > 1.0f) busPan = 1.0f;
@@ -1005,6 +1014,7 @@ extern "C" {
             }
         }
         gActiveVoices.clear();
+
         return 1.0;
     }
 
