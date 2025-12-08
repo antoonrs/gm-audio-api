@@ -255,6 +255,7 @@ struct SongEvent {
     float vel = 1.0f;
     bool active = true;
     int bus = 0;
+    std::string instrName;
 };
 
 struct Song {
@@ -292,7 +293,7 @@ static bool json_extract_int(const std::string& txt, const char* key, int& out) 
 static bool json_extract_events(const std::string& txt, std::vector<SongEvent>& out) {
     out.clear();
     const std::regex reFile(R"(\{\s*\"file\"\s*:\s*\"([^\"]+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*\})");
-    const std::regex reNote(R"(\{\s*\"note\"\s*:\s*\"([A-Ga-g][#b]?\-?\d+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*\})");
+    const std::regex reNote(R"(\{\s*\"note\"\s*:\s*\"([A-Ga-g][#b]?\-?\d+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*(?:,\s*\"instr\"\s*:\s*\"([^\"]+)\")?\s*\})");
     for (auto it = std::sregex_iterator(txt.begin(), txt.end(), reFile); it != std::sregex_iterator(); ++it) {
         SongEvent ev;
         ev.path = (*it)[1].str();
@@ -309,10 +310,21 @@ static bool json_extract_events(const std::string& txt, std::vector<SongEvent>& 
         if ((*it).size() >= 3 && (*it)[3].matched) ev.dur = std::stod((*it)[3].str());
         if ((*it).size() >= 4 && (*it)[4].matched) ev.vel = (float)std::stod((*it)[4].str());
         if ((*it).size() >= 5 && (*it)[5].matched) ev.bus = std::stoi((*it)[5].str());
+        if ((*it).size() >= 7 && (*it)[6].matched) ev.instrName = (*it)[6].str();
         out.push_back(ev);
     }
     return !out.empty();
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+// INSTRUMENTOS
+////////////////////////////////////////////////////////////////////////////////////////
+struct Instrument {
+    std::string file;
+    int baseNote = 60;
+    double tuningHz = 440.0;
+};
+static std::unordered_map<std::string, Instrument> gInstruments;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -341,6 +353,7 @@ extern "C" {
             gSoundMeta.clear();
             gBuses.clear();
             gNextBusId.store(1);
+            gInstruments.clear();
 
             ensure_master_bus_locked();
 
@@ -405,6 +418,7 @@ extern "C" {
 
         gBuses.clear();
         gSoundMeta.clear();
+        gInstruments.clear();
 
         return 1.0;
     }
@@ -593,6 +607,19 @@ extern "C" {
             }
         }
         gActiveVoices.clear();
+
+        // PROCESAR DESTRUCCIÓN DIFERIDA INMEDIATAMENTE
+        if (!gPendingDelete.empty()) {
+            for (ma_sound* s : gPendingDelete) {
+                if (s) {
+                    // Detener por si acaso y liberar inmediatamente
+                    ma_sound_stop(s);
+                    ma_sound_uninit(s);
+                    delete s;
+                }
+            }
+            gPendingDelete.clear();
+        }
 
         // Reiniciar la canción: empezar desde el principio
         if (gSong.loaded) {
@@ -869,6 +896,7 @@ extern "C" {
             }
         }
         gSong = Song{};
+        gInstruments.clear();
 
         ensure_master_bus_locked();
 
@@ -884,6 +912,31 @@ extern "C" {
             if (mInstr.size() >= 2 && mInstr[1].matched) globalInstrFile = mInstr[1].str();
             if (mInstr.size() >= 3 && mInstr[2].matched) globalBaseNote = std::stoi(mInstr[2].str());
             if (mInstr.size() >= 4 && mInstr[3].matched) globalTuningHz = std::stod(mInstr[3].str());
+            if (!globalInstrFile.empty()) {
+                Instrument ins;
+                ins.file = globalInstrFile;
+                ins.baseNote = globalBaseNote;
+                ins.tuningHz = globalTuningHz;
+                gInstruments["__default__"] = ins;
+            }
+        }
+
+        std::regex reInstrArray(R"("instruments"\s*:\s*\[([^\]]+)\])", std::regex::icase);
+        std::smatch mArray;
+        if (std::regex_search(txt, mArray, reInstrArray) && mArray.size() >= 2) {
+            std::string arrBody = mArray[1].str();
+            std::regex reItem(R"(\{\s*\"name\"\s*:\s*\"([^\"]+)\"\s*,\s*\"file\"\s*:\s*\"([^\"]+)\"(?:\s*,\s*\"baseNote\"\s*:\s*([-]?\d+))?(?:\s*,\s*\"tuningHz\"\s*:\s*([0-9.]+))?\s*\})", std::regex::icase);
+            for (auto it = std::sregex_iterator(arrBody.begin(), arrBody.end(), reItem); it != std::sregex_iterator(); ++it) {
+                std::smatch mi = *it;
+                if (mi.size() >= 3 && mi[1].matched && mi[2].matched) {
+                    Instrument ins;
+                    std::string name = mi[1].str();
+                    ins.file = mi[2].str();
+                    if (mi.size() >= 4 && mi[3].matched) ins.baseNote = std::stoi(mi[3].str());
+                    if (mi.size() >= 5 && mi[4].matched) ins.tuningHz = std::stod(mi[4].str());
+                    gInstruments[name] = ins;
+                }
+            }
         }
 
         for (auto& ev : evs) {
@@ -907,15 +960,28 @@ extern "C" {
                 sev.dur = ev.dur;
                 sev.vel = (float)vel;
                 sev.bus = ev.bus;
-                if (globalInstrFile.empty()) {
+                std::string instrToUse;
+                if (!ev.instrName.empty()) instrToUse = ev.instrName;
+                else if (gInstruments.find("__default__") != gInstruments.end()) instrToUse = "__default__";
+
+                if (instrToUse.empty()) {
                     for (auto& le : loadedEvents) {
                         if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
                     }
                     return 0.0;
                 }
-                std::string instrFullPath = path_join(baseDir, globalInstrFile);
+
+                auto git = gInstruments.find(instrToUse);
+                if (git == gInstruments.end()) {
+                    for (auto& le : loadedEvents) {
+                        if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
+                    }
+                    return 0.0;
+                }
+                Instrument ins = git->second;
+                std::string instrFullPath = path_join(baseDir, ins.file);
                 std::ostringstream meta;
-                meta << instrFullPath << "|NOTE:" << noteStr << "|BASE:" << globalBaseNote << "|TUN:" << globalTuningHz;
+                meta << instrFullPath << "|NOTE:" << noteStr << "|BASE:" << ins.baseNote << "|TUN:" << ins.tuningHz;
                 sev.path = meta.str();
                 loadedEvents.push_back(sev);
             }
@@ -1014,6 +1080,17 @@ extern "C" {
             }
         }
         gActiveVoices.clear();
+
+        if (!gPendingDelete.empty()) {
+            for (ma_sound* s : gPendingDelete) {
+                if (s) {
+                    ma_sound_stop(s);
+                    ma_sound_uninit(s);
+                    delete s;
+                }
+            }
+            gPendingDelete.clear();
+        }
 
         return 1.0;
     }

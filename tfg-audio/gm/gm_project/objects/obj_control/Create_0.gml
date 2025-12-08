@@ -1,8 +1,9 @@
 global.ext = {}
 
 var dll = "dll\\gmaudioapi.dll"
-show_debug_message("WD = " + working_directory)
-show_debug_message("DLL existe? " + string(file_exists(working_directory + dll)))
+show_debug_message("WD = " + working_directory);
+show_debug_message("DLL path = " + (working_directory + dll));
+show_debug_message("DLL existe? " + string(file_exists(working_directory + dll)));
 
 global.ext.init       = external_define(dll,"gm_audio_init",             dll_cdecl, ty_real, 0)
 global.ext.shutdown   = external_define(dll,"gm_audio_shutdown",         dll_cdecl, ty_real, 0)
@@ -35,7 +36,8 @@ global.ext.songPlay  = external_define(dll,"gm_audio_song_play",      dll_cdecl,
 global.ext.songStop  = external_define(dll,"gm_audio_song_stop",      dll_cdecl, ty_real, 0)
 global.ext.songLoop  = external_define(dll,"gm_audio_song_set_loop",  dll_cdecl, ty_real, 1, ty_real)
 
-external_call(global.ext.init)
+res_init = external_call(global.ext.init);
+show_debug_message("gm_audio_init return = " + string(res_init));
 
 bus_drums  = external_call(global.ext.bus_create)
 bus_melody = external_call(global.ext.bus_create)
@@ -47,6 +49,9 @@ audio_path = working_directory + "test.mp3"
 preset_path = working_directory + "presets\\main.json"
 song_path = working_directory + "song.json"
 
+show_debug_message("audio_path = " + audio_path);
+show_debug_message("audio exists? " + string(file_exists(audio_path)));
+
 id_sound = 0
 vol = 1
 loop_on = 0
@@ -55,13 +60,16 @@ drums_muted = 0
 
 if file_exists(preset_path)
 {
-    external_call(global.ext.loadPreset, preset_path)
+    r = external_call(global.ext.loadPreset, preset_path);
+    show_debug_message("loadPreset -> " + string(r));
 }
-external_call(global.ext.tplay)
+r = external_call(global.ext.tplay);
+show_debug_message("transport play -> " + string(r));
 
 if file_exists(song_path)
 {
-    external_call(global.ext.songLoad, song_path)
+    r = external_call(global.ext.songLoad, song_path);
+    show_debug_message("songLoad -> " + string(r));
 }
-external_call(global.ext.tplay)
-external_call(global.ext.songPlay)
+r = external_call(global.ext.songPlay);
+show_debug_message("songPlay -> " + string(r))
