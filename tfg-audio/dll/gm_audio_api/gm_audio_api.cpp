@@ -814,6 +814,7 @@ extern "C" {
                             else {
                                 notePart = ev.path.substr(pnote + 6);
                             }
+
                             double vel = ev.vel;
                             int midi = note_name_to_midi(notePart);
                             if (midi >= 0) {
@@ -821,10 +822,35 @@ extern "C" {
                                 double pitch = pitch_from_semitones(delta, 0.0);
                                 ma_sound* v = new ma_sound();
                                 if (ma_sound_init_from_file(&gEngine, filePart.c_str(), 0, NULL, NULL, v) == MA_SUCCESS) {
-                                    ma_sound_set_volume(v, (float)vel);
+                                    float busVol = 1.0f;
+                                    float busPan = 0.0f;
+                                    auto bit = gBuses.find(ev.bus);
+                                    if (bit != gBuses.end()) {
+                                        busVol = bit->second.mute ? 0.0f : bit->second.volume;
+                                        busPan = bit->second.pan;
+                                    }
+
+
+                                    float velf = (float)vel;
+                                    if (velf < 0.f) velf = 0.f;
+                                    if (velf > 1.f) velf = 1.f;
+                                    float localGain = velf;
+
+
+                                    float finalVol = localGain * busVol;
+                                    if (finalVol < 0.f) finalVol = 0.f;
+
+                                    ma_sound_set_volume(v, finalVol);
+
                                     ma_sound_set_pitch(v, (float)pitch);
+
+                                    if (busPan < -1.0f) busPan = -1.0f;
+                                    if (busPan > 1.0f) busPan = 1.0f;
+                                    ma_sound_set_pan(v, busPan);
+
                                     ma_sound_start(v);
                                     gActiveVoices.push_back(ActiveVoice{ v, makeId() });
+
                                     if (ev.dur > 1e-9) {
                                         double voiceEndBeat = beat + ev.dur;
                                         gPendingStops.push_back(PendingStop{ v, voiceEndBeat });
@@ -834,6 +860,7 @@ extern "C" {
                                     delete v;
                                 }
                             }
+
                         }
                     }
 
@@ -942,23 +969,13 @@ extern "C" {
         for (auto& ev : evs) {
             if (ev.path.rfind("NOTE:", 0) == 0) {
                 std::string noteTail = ev.path.substr(5);
-                std::string noteStr;
-                double vel = 1.0;
-                size_t pvel = noteTail.find("|vel=");
-                if (pvel != std::string::npos) {
-                    noteStr = noteTail.substr(0, pvel);
-                    try { vel = std::stod(noteTail.substr(pvel + 5)); }
-                    catch (...) { vel = 1.0; }
-                }
-                else {
-                    noteStr = noteTail;
-                }
+                std::string noteStr = noteTail;
                 SongEvent sev;
                 sev.sound = nullptr;
                 sev.offsetBeat = ev.offsetBeat;
                 sev.active = true;
                 sev.dur = ev.dur;
-                sev.vel = (float)vel;
+                sev.vel = ev.vel;
                 sev.bus = ev.bus;
                 std::string instrToUse;
                 if (!ev.instrName.empty()) instrToUse = ev.instrName;

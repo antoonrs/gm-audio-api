@@ -11,14 +11,7 @@
   ],
 
   "events": [
-    { "note": "C4", "beat": 0.0, "dur": 0.8, "vel": 0.9, "bus": 2, "instr": "sine" },
-    { "note": "E5", "beat": 1.0, "dur": 0.8, "vel": 0.85, "bus": 2, "instr": "triangle" },
-    { "note": "G5", "beat": 1.0, "dur": 0.8, "vel": 0.8, "bus": 2, "instr": "square" },
-    { "note": "E5", "beat": 2.0, "dur": 0.8, "vel": 0.85, "bus": 2, "instr": "triangle" },
-    { "note": "G5", "beat": 2.0, "dur": 0.8, "vel": 0.8, "bus": 2, "instr": "square" },
-
-    { "file": "drum.wav",  "beat": 0.0, "bus": 1 },
-    { "file": "snare.wav", "beat": 1.0, "bus": 1 },
-    { "file": "snare.wav", "beat": 2.0, "bus": 1 },
-  ]
+    { "note": "C4", "beat": 0.0, "dur": 0.8, "vel": 1.0, "bus": 1, "instr": "triangle" },
+    { "note": "C4", "beat": 1.0, "dur": 0.8, "vel": 0.5, "bus": 1, "instr": "triangle" },
+    { "note": "C4", "beat": 2.0, "dur": 0.8, "vel": 0.1, "bus": 1, "instr": "triangle" }
 }
