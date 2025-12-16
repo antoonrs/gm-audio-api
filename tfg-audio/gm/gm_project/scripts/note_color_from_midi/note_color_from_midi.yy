@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"note_color_from_midi",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"note_color_from_midi",
+  "parent":{
+    "name":"otros",
+    "path":"folders/Scripts/otros.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

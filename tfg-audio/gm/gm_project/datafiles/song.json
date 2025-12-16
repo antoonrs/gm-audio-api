@@ -1,17 +1,16 @@
 {
-  "bpm": 80,
-  "beatsPerBar": 3,
+  "bpm": 120,
+  "beatsPerBar": 4,
   "bars": 1,
   "loop": true,
 
   "instruments": [
-    { "name": "sine", "file": "sine_C4.wav", "baseNote": 60, "tuningHz": 440 },
-    { "name": "triangle", "file": "triangle_C4.mp3", "baseNote": 60, "tuningHz": 440 },
-    { "name": "square", "file": "square_C4.mp3", "baseNote": 60, "tuningHz": 440 }
+    { "name": "triangle", "file": "triangle_C4.mp3", "baseNote": 60, "tuningHz": 440 }
   ],
 
   "events": [
-    { "note": "C4", "beat": 0.0, "dur": 0.8, "vel": 1.0, "bus": 1, "instr": "triangle" },
-    { "note": "C4", "beat": 1.0, "dur": 0.8, "vel": 0.5, "bus": 1, "instr": "triangle" },
-    { "note": "C4", "beat": 2.0, "dur": 0.8, "vel": 0.1, "bus": 1, "instr": "triangle" }
+    { "note": "C4", "beat": 0, "dur": 0.80, "vel": 1, "bus": 1, "instr": "triangle" },
+    { "note": "C4", "beat": 1, "dur": 0.80, "vel": 0.60, "bus": 1, "instr": "triangle" },
+    { "note": "C4", "beat": 2, "dur": 0.80, "vel": 0.30, "bus": 1, "instr": "triangle" }
+  ]
 }

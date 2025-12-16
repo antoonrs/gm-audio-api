@@ -1,4 +1,4 @@
-draw_set_color(c_white);
+/*draw_set_color(c_white);
 draw_set_font(-1);
 
 var beat = external_call(global.ext.getBeat);

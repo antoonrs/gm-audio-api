@@ -1,0 +1,1 @@
+obj_main_menu.pantalla = 0

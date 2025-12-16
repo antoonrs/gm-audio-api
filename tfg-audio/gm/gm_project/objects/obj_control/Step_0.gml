@@ -42,7 +42,7 @@ if (keyboard_check_pressed(ord("B"))) {
     show_debug_message("PLAY QUANT id=" + string(idq) + " q=" + string(q));
 }
 */
-
+/*
 if (keyboard_check_pressed(vk_left)){
 external_call(global.ext.bus_set_pan, bus_drums, -1)
 }

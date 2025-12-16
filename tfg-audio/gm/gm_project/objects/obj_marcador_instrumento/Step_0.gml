@@ -1,0 +1,3 @@
+offsetinstrument=obj_main_menu.offsetinstrument
+
+actualizar_datos()

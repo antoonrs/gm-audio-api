@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"midi_to_note_string",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"midi_to_note_string",
+  "parent":{
+    "name":"otros",
+    "path":"folders/Scripts/otros.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
