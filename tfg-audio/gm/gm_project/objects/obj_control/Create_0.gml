@@ -38,3 +38,71 @@ global.ext.songLoop  = external_define(dll, "gm_audio_song_set_loop",       dll_
 
 res_init = external_call(global.ext.init);
 //show_debug_message("gm_audio_init return = " + string(res_init));
+
+
+
+global.instrument_library = [
+    {
+        id : "piano",
+        name : "Piano",
+        file : "sounds/piano.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+	{
+        id : "bell",
+        name : "Bell",
+        file : "sounds/bell.mp3",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "marimba",
+        name : "Marimba",
+        file : "sounds/marimba.mp3",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "organ",
+        name : "Organ",
+        file : "sounds/organ.mp3",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "sine",
+        name : "Sine",
+        file : "sounds/sine_C4.wav",
+        base_note : 60,
+        type : "synth"
+    },
+    {
+        id : "square",
+        name : "Square",
+        file : "sounds/square_C4.mp3",
+        base_note : 60,
+        type : "synth"
+    },
+    {
+        id : "triangle",
+        name : "Triangle",
+        file : "sounds/triangle_C4.mp3",
+        base_note : 60,
+        type : "synth"
+    },
+    {
+        id : "drum",
+        name : "Drum",
+        file : "sounds/drum.wav",
+        base_note : 60,
+        type : "percussion"
+    },
+    {
+        id : "snare",
+        name : "Snare",
+        file : "sounds/snare.wav",
+        base_note : 60,
+        type : "percussion"
+    }
+];
