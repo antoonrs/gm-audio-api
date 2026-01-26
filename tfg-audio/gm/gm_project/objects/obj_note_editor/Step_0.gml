@@ -265,6 +265,16 @@ if (mlp) {
                 array_push(ctrl.events, newev)
                 new_idx = array_length(ctrl.events) - 1
             }
+			
+            var nm = round(bottom_midi + t * (top_midi - bottom_midi))
+            var nn = midi_to_note_string(nm)
+			var inst = ctrl.instruments[instr_index];
+			var base_note = global.instrument_library[instr_index].base_note;
+			var desc = inst.file + "|NOTE:" + nn + "|BASE:" + string(base_note);
+			external_call(global.ext.preview_note, desc, 0.7, 0.12);
+
+
+
 
             selected_ev = new_idx
 
@@ -277,25 +287,45 @@ if (mlp) {
 }
 
 // DRAG: mover nota
+
 if (dragging && ml && selected_ev >= 0 && selected_ev < array_length(ctrl.events)) {
+
     var dx = mx - drag_origin_mouse_x
     var new_beat = drag_origin_beat + dx / real(px_per_beat)
     if (new_beat < 0) new_beat = 0
+
     var snap2 = 1/16
     if (snap2 > 0) new_beat = round(new_beat / snap2) * snap2
 
     var denom_y2 = (area_y1 - area_y0)
-    var t2 = 0.5
-    if (denom_y2 != 0) {
-        t2 = (area_y1 - my) / denom_y2
-        if (t2 < 0) t2 = 0
-        if (t2 > 1) t2 = 1
-    }
+    var t2 = (denom_y2 != 0) ? (area_y1 - my) / denom_y2 : 0.5
+    t2 = clamp(t2, 0, 1)
+
     var new_midi = round(bottom_midi + t2 * (top_midi - bottom_midi))
 
     ctrl.events[selected_ev].beat = new_beat
     ctrl.events[selected_ev].note = midi_to_note_string(new_midi)
+
+    var now = current_time / 1000
+    if (new_midi != last_preview_midi && now - last_preview_time > preview_cooldown) {
+
+        last_preview_midi = new_midi
+        last_preview_time = now
+
+        var nm = round(bottom_midi + t2 * (top_midi - bottom_midi))
+		var nn = midi_to_note_string(nm)
+
+		var inst = ctrl.instruments[instr_index]
+		var base_note = global.instrument_library[instr_index].base_note
+		var desc = inst.file + "|NOTE:" + nn + "|BASE:" + string(base_note)
+
+		external_call(global.ext.preview_note, desc, 0.9, 0.25)
+
+    }
 }
+
+
+
 
 if (!ml && dragging) dragging = false
 

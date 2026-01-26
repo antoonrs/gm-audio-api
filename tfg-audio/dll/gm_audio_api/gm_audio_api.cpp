@@ -1245,5 +1245,55 @@ extern "C" {
     }
 
 
+    ///// PREVIEWS
+
+    // Formato del string porque no deja game maker mas de 4  argumentos "file|NOTE:C4|BASE:60"
+    __declspec(dllexport) double gm_audio_preview_note(const char* desc, double velocity, double duration) {
+        if (!gEngineIniciado || !desc) return 0.0;
+
+        std::lock_guard<std::mutex> lock(gMutex);
+
+        std::string s(desc);
+
+        // Parsear
+        size_t p1 = s.find("|NOTE:");
+        size_t p2 = s.find("|BASE:");
+
+        if (p1 == std::string::npos || p2 == std::string::npos) return 0.0;
+
+        std::string file = s.substr(0, p1);
+        std::string note = s.substr(p1 + 6, p2 - (p1 + 6));
+        int baseNote = std::stoi(s.substr(p2 + 6));
+
+        int midi = note_name_to_midi(note);
+        if (midi < 0) return 0.0;
+
+        double pitch = pitch_from_semitones(midi - baseNote);
+
+        ma_sound* v = new ma_sound();
+        if (ma_sound_init_from_file(&gEngine, file.c_str(), 0, NULL, NULL, v) != MA_SUCCESS) {
+            delete v;
+            return 0.0;
+        }
+
+        velocity = std::clamp(velocity, 0.0, 1.0);
+
+        ma_sound_set_volume(v, (float)velocity);
+        ma_sound_set_pitch(v, (float)pitch);
+        ma_sound_start(v);
+
+        if (duration > 0.0) {
+            double nowBeat = transport_get_beat_unlocked();
+            gPendingStops.push_back({ v, nowBeat + duration });
+        }
+
+        gActiveVoices.push_back({ v, makeId() });
+        return 1.0;
+    }
+
+
+
+
+
 
 } // extern "C"

@@ -57,3 +57,8 @@ _editor_init = true;
 function _ctrl_has(_fn_name) {
     return (ctrl != noone) && variable_instance_exists(ctrl, _fn_name)
 }
+
+
+last_preview_midi = -1
+last_preview_time = 0
+preview_cooldown = 0.05

@@ -36,6 +36,9 @@ global.ext.songPlay  = external_define(dll, "gm_audio_song_play",           dll_
 global.ext.songStop  = external_define(dll, "gm_audio_song_stop",           dll_cdecl, ty_real, 0);
 global.ext.songLoop  = external_define(dll, "gm_audio_song_set_loop",       dll_cdecl, ty_real, 1, ty_real);
 
+global.ext.preview_note = external_define(dll,"gm_audio_preview_note",dll_cdecl,ty_real,3,ty_string,ty_real,ty_real);
+
+
 res_init = external_call(global.ext.init);
 //show_debug_message("gm_audio_init return = " + string(res_init));
 
