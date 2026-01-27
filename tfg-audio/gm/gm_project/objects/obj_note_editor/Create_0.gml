@@ -62,3 +62,40 @@ function _ctrl_has(_fn_name) {
 last_preview_midi = -1
 last_preview_time = 0
 preview_cooldown = 0.05
+
+
+preview_playing = false
+preview_start_beat = 0
+preview_cursor_beat = 0
+preview_last_beat = 0
+
+btn_size = 36
+btn_margin = 10
+
+btn_play_x = back_btn_x + back_btn_w + 20
+btn_play_y = 8
+btn_play_w = btn_size
+btn_play_h = btn_size
+
+btn_reset_x = btn_play_x + btn_size + btn_margin
+btn_reset_y = btn_play_y
+btn_reset_w = btn_size
+btn_reset_h = btn_size
+
+
+function preview_toggle_play() {
+    if (!preview_playing) {
+        preview_playing = true
+        preview_last_beat = external_call(global.ext.getBeat)
+        external_call(global.ext.tplay)
+    } else {
+        preview_playing = false
+        external_call(global.ext.tpause)
+    }
+}
+
+function preview_go_to_start() {
+    preview_playing = false
+    preview_last_beat = 0
+    external_call(global.ext.tstop)
+}

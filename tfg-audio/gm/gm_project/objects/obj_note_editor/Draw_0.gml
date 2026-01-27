@@ -175,3 +175,111 @@ if (scroll_hover_alpha > 0.001) {
 
 draw_set_color(hovering_thumb ? scroll_thumb_hover_color : scroll_thumb_color)
 draw_roundrect_ext(thumb_x, track_y, thumb_x + thumb_w, track_y + scrollbar_height, 5, 5, false)
+
+
+
+
+// BOTONES
+draw_set_font(font_big)
+draw_set_halign(fa_center)
+draw_set_valign(fa_middle)
+
+draw_set_color(ui_bg_color)
+draw_roundrect_ext(
+    btn_play_x, btn_play_y,
+    btn_play_x + btn_play_w,
+    btn_play_y + btn_play_h,
+    8, 8, false
+)
+
+draw_set_color(text_color_primary)
+
+var cx = btn_play_x + btn_play_w * 0.5
+var cy = btn_play_y + btn_play_h * 0.5
+var s  = btn_play_w * 0.22
+
+if (!preview_playing) {
+    // PLAY
+    draw_triangle(cx - s, cy - s,cx - s, cy + s,cx + s, cy,false)
+} else {
+    // PAUSE
+    var w = s * 0.45
+    var h = s * 1.2
+
+    draw_rectangle(cx - w * 2, cy - h, cx - w, cy + h, false)
+    draw_rectangle(cx + w,     cy - h, cx + w * 2, cy + h, false)
+}
+
+
+// RESET
+draw_set_color(ui_bg_color)
+draw_roundrect_ext(
+    btn_reset_x, btn_reset_y,
+    btn_reset_x + btn_reset_w,
+    btn_reset_y + btn_reset_h,
+    8, 8, false
+)
+
+draw_set_color(text_color_primary)
+
+var cx = btn_reset_x + btn_reset_w * 0.5
+var cy = btn_reset_y + btn_reset_h * 0.5
+var s  = btn_reset_w * 0.22
+
+draw_rectangle(
+    cx - s * 1.6, cy - s * 1,
+    cx - s * 1.2, cy + s * 1,
+    false
+)
+
+draw_triangle(cx + s, cy - s, cx + s, cy + s,cx - s * 0.6, cy,false)
+
+
+
+
+
+if (preview_playing) {
+
+    var beat = external_call(global.ext.getBeat)
+    var start_beat = real(ctrl.scroll_beats)
+
+    var xb = area_x0 + (beat - start_beat) * px_per_beat
+
+    draw_set_color(c_white)
+    draw_set_alpha(0.9)
+    draw_line(xb, area_y0, xb, area_y1)
+    draw_set_alpha(1)
+}
+
+
+var hover_play =
+    mx >= btn_play_x && mx <= btn_play_x + btn_play_w &&
+    my >= btn_play_y && my <= btn_play_y + btn_play_h
+
+var hover_reset =
+    mx >= btn_reset_x && mx <= btn_reset_x + btn_reset_w &&
+    my >= btn_reset_y && my <= btn_reset_y + btn_reset_h
+
+if (hover_play) {
+    draw_set_alpha(0.25)
+    draw_set_color(c_white)
+    draw_roundrect_ext(
+        btn_play_x, btn_play_y,
+        btn_play_x + btn_play_w,
+        btn_play_y + btn_play_h,
+        8, 8, false
+    )
+    draw_set_alpha(1)
+}
+
+if (hover_reset) {
+    draw_set_alpha(0.25)
+    draw_set_color(c_white)
+    draw_roundrect_ext(
+        btn_reset_x, btn_reset_y,
+        btn_reset_x + btn_reset_w,
+        btn_reset_y + btn_reset_h,
+        8, 8, false
+    )
+    draw_set_alpha(1)
+}

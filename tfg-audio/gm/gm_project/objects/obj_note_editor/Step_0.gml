@@ -330,3 +330,69 @@ if (dragging && ml && selected_ev >= 0 && selected_ev < array_length(ctrl.events
 if (!ml && dragging) dragging = false
 
 if (selected_ev >= array_length(ctrl.events)) selected_ev = -1
+
+
+
+
+if (keyboard_check_pressed(vk_space)) {
+    preview_toggle_play()
+}
+
+if (keyboard_check_pressed(vk_enter)) {
+    preview_go_to_start()
+}
+
+
+if (mlp) {
+
+    // PLAY / PAUSE
+    if (mx >= btn_play_x && mx <= btn_play_x + btn_play_w &&
+        my >= btn_play_y && my <= btn_play_y + btn_play_h) {
+
+        preview_toggle_play()
+    }
+
+    // RESET
+    if (mx >= btn_reset_x && mx <= btn_reset_x + btn_reset_w &&
+        my >= btn_reset_y && my <= btn_reset_y + btn_reset_h) {
+
+        preview_go_to_start()
+    }
+}
+
+
+
+
+if (preview_playing) {
+
+    var current_beat = external_call(global.ext.getBeat)
+
+    var instr_name = string(ctrl.instruments[instr_index].name)
+
+    for (var i = 0; i < array_length(ctrl.events); ++i) {
+        var ev = ctrl.events[i]
+        if (string(ev.instr) != instr_name) continue
+
+        var ev_beat = real(ev.beat)
+
+        if (ev_beat >= preview_last_beat && ev_beat < current_beat) {
+
+            var nn = ev.note
+            var inst = ctrl.instruments[instr_index]
+            var base_note = global.instrument_library[instr_index].base_note
+
+            var desc = inst.file + "|NOTE:" + nn + "|BASE:" + string(base_note)
+
+            external_call(
+                global.ext.preview_note,
+                desc,
+                ev.vel,
+                ev.dur
+            )
+        }
+    }
+
+    preview_last_beat = current_beat
+}
+
+
