@@ -51,3 +51,19 @@ Pantalla
 */
 
 alarm[0]=1
+
+
+
+song_playing = false;
+
+
+// Botones
+btn_play_x = archivolength + 12;
+btn_play_y = 8;
+btn_play_w = 32;
+btn_play_h = 32;
+
+btn_reset_x = btn_play_x + btn_play_w + 8;
+btn_reset_y = btn_play_y;
+btn_reset_w = 32;
+btn_reset_h = 32;

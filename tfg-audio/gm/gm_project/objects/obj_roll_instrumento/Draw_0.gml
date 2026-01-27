@@ -63,3 +63,22 @@ for (var i = 0; i < array_length(ctrl.events); i++) {
     draw_roundrect_ext(x0, y0, x1, y1, 10, 10, false)
 
 }
+
+
+
+
+var mm = instance_find(obj_main_menu, 0);
+if (mm == noone || !mm.song_playing) exit;
+
+var ctrl = instance_find(obj_control_variables, 0);
+if (ctrl == noone) exit;
+
+var beat_now = external_call(global.ext.getBeat);
+
+var scroll = 0;
+if (!is_undefined(ctrl.scroll_beats)) scroll = ctrl.scroll_beats;
+
+var px = x_start + (beat_now - scroll) * px_per_beat;
+
+if (px >= x_start && px <= x_end)
+    draw_line(px, yy, px, yy + ih);

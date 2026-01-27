@@ -51,3 +51,53 @@ draw_text(archivolength/2,upperbarheight/2,archivotexto)
 // TIMELINE BARRA
 draw_set_color(timelinecolor)
 draw_rectangle(0,upperbarheight,room_width,upperbarheight+timelineheight,false)
+
+
+
+
+
+// FONDO BOTÓN PLAY
+draw_set_color(upperbarcolor);
+draw_roundrect_ext(
+    btn_play_x, btn_play_y,
+    btn_play_x + btn_play_w, btn_play_y + btn_play_h,
+    6, 6, false
+);
+
+// ICONO
+draw_set_color(textcolor);
+
+if (!song_playing) {
+    draw_triangle(
+        btn_play_x + 10, btn_play_y + 7,
+        btn_play_x + 10, btn_play_y + btn_play_h - 7,
+        btn_play_x + btn_play_w - 7, btn_play_y + btn_play_h * 0.5,
+        false);
+} else {
+    draw_rectangle(btn_play_x + 9,  btn_play_y + 7, btn_play_x + 13, btn_play_y + btn_play_h - 7, false);
+    draw_rectangle(btn_play_x + 19, btn_play_y + 7, btn_play_x + 23, btn_play_y + btn_play_h - 7, false);
+}
+
+
+
+// FONDO BOTÓN RESET
+draw_set_color(upperbarcolor);
+draw_roundrect_ext(
+    btn_reset_x, btn_reset_y,
+    btn_reset_x + btn_reset_w, btn_reset_y + btn_reset_h,
+    6, 6, false);
+
+// ICONO
+draw_set_color(textcolor);
+
+// barra
+draw_rectangle(
+    btn_reset_x + 9, btn_reset_y + 7,
+    btn_reset_x + 13, btn_reset_y + btn_reset_h - 7,
+    false);
+
+// triangulo
+draw_triangle(
+    btn_reset_x + 24, btn_reset_y + 7,
+    btn_reset_x + 24, btn_reset_y + btn_reset_h - 7,
+    btn_reset_x + 13, btn_reset_y + btn_reset_h * 0.5,false);

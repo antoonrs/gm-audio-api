@@ -68,9 +68,108 @@ if pantalla = 0{
 		instance_create_depth(0,upperbarheight,-2,obj_control_menu_archivo)
 	}
 
+
+
+
+
+	// SPACE = PLAY / PAUSE
+	if (keyboard_check_pressed(vk_space)) {
+
+	    if (!song_playing) {
+
+	        // Arrancar transport
+	        external_call(global.ext.tplay);
+
+	        // Sincronizar TODOS los instrumentos al beat actual
+	        var b = external_call(global.ext.getBeat);
+	        with (obj_roll_instrumento) {
+	            last_emit_beat = b;
+	        }
+
+	        song_playing = true;
+
+	    } else {
+	        external_call(global.ext.tpause);
+	        song_playing = false;
+	    }
+	}
+
+	// ENTER = RESET
+	if (keyboard_check_pressed(vk_enter)) {
+
+	    // Parar transport
+	    external_call(global.ext.tstop);
+
+	    // Resetear estado temporal de TODOS los instrumentos
+	    with (obj_roll_instrumento) {
+	        last_emit_beat = 0;
+	    }
+
+	    song_playing = false;
+	}
+
+	// BOTONES
+	if (mouse_check_button_pressed(mb_left)) {
+
+	    // PLAY
+	    if (point_in_rectangle(mouse_x, mouse_y,
+	        btn_play_x, btn_play_y,
+	        btn_play_x + btn_play_w,
+	        btn_play_y + btn_play_h))
+	    {
+	        if (!song_playing) {
+
+	            external_call(global.ext.tplay);
+
+	            var b = external_call(global.ext.getBeat);
+	            with (obj_roll_instrumento) {
+	                last_emit_beat = b;
+	            }
+
+	            song_playing = true;
+
+	        } else {
+	            external_call(global.ext.tpause);
+	            song_playing = false;
+	        }
+	    }
+
+	    // RESET
+	    if (point_in_rectangle(mouse_x, mouse_y,
+	        btn_reset_x, btn_reset_y,
+	        btn_reset_x + btn_reset_w,
+	        btn_reset_y + btn_reset_h))
+	    {
+	        external_call(global.ext.tstop);
+
+	        with (obj_roll_instrumento) {
+	            last_emit_beat = 0;
+	        }
+
+	        song_playing = false;
+	    }
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 } // pantalla = 0
 
 if pantalla = 1
 {
 	
 }
+
+
+
+
+
