@@ -1,15 +1,45 @@
 external_call(global.ext.tick);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
 if (keyboard_check_pressed(ord("P"))) {
 	var sound_id = external_call(
     global.ext.play,
-    working_directory + "drum.wav"
+    working_directory + "weefagerCancion.mp3"
 	);
 
     show_debug_message("PLAY id=" + string(sound_id));
 }
 
-/*
 if (keyboard_check_pressed(ord("O")) && id_sound > 0) {
     external_call(global.ext.stop, id_sound);
     id_sound = 0;

@@ -153,9 +153,80 @@ if pantalla = 0{
 
 
 
-
-
-
+// CAMPOS DE CANCION
+var ctrl = instance_find(obj_control_variables,0)
+if (ctrl != noone)
+{
+    var right = room_width - ui_box_margin
+    var ui_y = upperbarheight * 0.5 - ui_box_h * 0.5
+    
+    var x_bpm  = right - ui_box_w
+    var x_bpb  = right - ui_box_w*2 - ui_box_margin
+    var x_bar  = right - ui_box_w*3 - ui_box_margin*2
+    
+    if (mouse_check_button_pressed(mb_left))
+    {
+        ui_field_active = -1
+        
+        if point_in_rectangle(mouse_x,mouse_y,x_bpm,ui_y,x_bpm+ui_box_w,ui_y+ui_box_h)
+        {
+            ui_field_active = 0
+            ui_buffer = string(ctrl.bpm)
+        }
+        else if point_in_rectangle(mouse_x,mouse_y,x_bpb,ui_y,x_bpb+ui_box_w,ui_y+ui_box_h)
+        {
+            ui_field_active = 1
+            ui_buffer = string(ctrl.beatsPerBar)
+        }
+        else if point_in_rectangle(mouse_x,mouse_y,x_bar,ui_y,x_bar+ui_box_w,ui_y+ui_box_h)
+        {
+            ui_field_active = 2
+            ui_buffer = string(ctrl.bars)
+        }
+    }
+    
+    // ESCRITURA REAL
+    if (ui_field_active != -1)
+    {
+        // Numeros
+        for (var k = ord("0"); k <= ord("9"); k++)
+        {
+            if (keyboard_check_pressed(k))
+                ui_buffer += chr(k)
+        }
+        
+        // Borrar
+        if (keyboard_check_pressed(vk_backspace))
+        {
+            if (string_length(ui_buffer) > 0)
+                ui_buffer = string_delete(ui_buffer, string_length(ui_buffer), 1)
+        }
+        
+        // Confirmar
+        if (keyboard_check_pressed(vk_enter))
+        {
+            var val = real(ui_buffer)
+            
+            switch(ui_field_active)
+            {
+                case 0:
+                    ctrl.bpm = clamp(val,20,300)
+                    external_call(global.ext.setTempo, ctrl.bpm)
+                break
+                
+                case 1:
+                    ctrl.beatsPerBar = clamp(val,1,12)
+                break
+                
+                case 2:
+                    ctrl.bars = clamp(val,1,256)
+                break
+            }
+            
+            ui_field_active = -1
+        }
+    }
+}
 
 
 

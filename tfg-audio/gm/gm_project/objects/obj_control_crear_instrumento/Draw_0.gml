@@ -93,7 +93,7 @@ draw_set_color(active_field == 3 ? activocolor : make_color_rgb(220,220,230));
 draw_roundrect_ext(field_left, tuning_top, field_right, tuning_bottom, r2, r2, false);
 
 draw_set_color(textcolor);
-draw_text(field_left, tuning_top - 20, "Tuning");
+draw_text(field_left, tuning_top - 20, "Tuning (fixed)");
 
 draw_set_color(instrumentcolorbackground);
 draw_text(field_left + 8, tuning_top + 8, field_tuning);

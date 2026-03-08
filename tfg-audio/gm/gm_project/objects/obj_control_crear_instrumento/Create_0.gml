@@ -14,8 +14,10 @@ target_h = room_height / 2;
 panel_w = 32;
 panel_h = 32;
 
+upward = 200; // un poco mas arriba
+
 x = room_width  * 0.5 - target_w * 0.5;
-y = room_height * 0.5 - target_h * 0.5;
+y = room_height * 0.5 - target_h * 0.5 - upward;
 
 panel_bounce = 0.25;
 panel_opened = false;
@@ -25,7 +27,7 @@ instrument_dropdown_open = false;
 
 selected_instrument = irandom(array_length(global.instrument_library) - 1);
 
-instrument_dropdown_max = 10;
+instrument_dropdown_max = 20;
 
 
 field_base_note = "60";
@@ -39,7 +41,7 @@ active_field = -1;
 keyboard_string = "";
 
 
-field_height = 32;
+field_height = 28;
 field_margin_top = 72;
 field_margin_side = 32;
 field_sep = 32;

@@ -43,7 +43,6 @@ res_init = external_call(global.ext.init);
 //show_debug_message("gm_audio_init return = " + string(res_init));
 
 
-
 global.instrument_library = [
     {
         id : "piano",
@@ -107,5 +106,68 @@ global.instrument_library = [
         file : "sounds/snare.wav",
         base_note : 60,
         type : "percussion"
+    },
+    {
+        id : "hithat",
+        name : "Hit Hat",
+        file : "sounds/hithat.wav",
+        base_note : 60,
+        type : "percussion"
+    },
+    {
+        id : "steelpan",
+        name : "Steel Pan",
+        file : "sounds/steelpan.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "flute",
+        name : "Flute",
+        file : "sounds/flute.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "trumpet",
+        name : "Trumpet",
+        file : "sounds/trumpet.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "shamisen",
+        name : "Shamisen",
+        file : "sounds/shamisen.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "mosquito",
+        name : "Mosquito",
+        file : "sounds/mosquito.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "orchestrahit",
+        name : "Orchestra hit",
+        file : "sounds/orchestrahit.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "bass",
+        name : "Bass",
+        file : "sounds/bass.wav",
+        base_note : 60,
+        type : "melodic"
+    },
+    {
+        id : "pizzicato",
+        name : "Pizzicato",
+        file : "sounds/pizzicato.wav",
+        base_note : 60,
+        type : "melodic"
     }
 ];

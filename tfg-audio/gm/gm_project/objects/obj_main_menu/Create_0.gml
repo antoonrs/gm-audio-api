@@ -67,3 +67,11 @@ btn_reset_x = btn_play_x + btn_play_w + 8;
 btn_reset_y = btn_play_y;
 btn_reset_w = 32;
 btn_reset_h = 32;
+
+
+ui_field_active = -1
+ui_buffer = ""
+
+ui_box_w = 90
+ui_box_h = 28
+ui_box_margin = 12
