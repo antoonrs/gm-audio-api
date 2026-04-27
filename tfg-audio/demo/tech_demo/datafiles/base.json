@@ -1,0 +1,27 @@
+{
+  "instruments":[
+    { "name":"Drum",    "file":"sounds/drum.wav",    "baseNote":60, "tuningHz":440 },
+    { "name":"Hit Hat", "file":"sounds/hithat.wav",  "baseNote":60, "tuningHz":440 },
+    { "name":"Snare",   "file":"sounds/snare.wav",   "baseNote":60, "tuningHz":440 }
+  ],
+
+  "events":[
+    { "note":"C4", "beat":0, "dur":1.0, "vel":1, "bus":0, "instr":"Drum" },
+    { "note":"C4", "beat":1, "dur":1.0, "vel":1, "bus":0, "instr":"Drum" },
+    { "note":"C4", "beat":2, "dur":1.0, "vel":1, "bus":0, "instr":"Drum" },
+    { "note":"C4", "beat":3, "dur":1.0, "vel":1, "bus":0, "instr":"Drum" },
+
+    { "note":"C5", "beat":0.5, "dur":1.0, "vel":1, "bus":0, "instr":"Hit Hat" },
+    { "note":"C5", "beat":1.5, "dur":1.0, "vel":1, "bus":0, "instr":"Hit Hat" },
+    { "note":"C5", "beat":2.5, "dur":1.0, "vel":1, "bus":0, "instr":"Hit Hat" },
+    { "note":"C5", "beat":3.5, "dur":1.0, "vel":1, "bus":0, "instr":"Hit Hat" },
+
+    { "note":"D4", "beat":1, "dur":1.0, "vel":1, "bus":0, "instr":"Snare" },
+    { "note":"D4", "beat":3, "dur":1.0, "vel":1, "bus":0, "instr":"Snare" }
+  ],
+
+  "bars":1,
+  "beatsPerBar":4,
+  "bpm":120,
+  "loop":true
+}

@@ -181,9 +181,18 @@ static std::string path_dirname(const std::string& p) {
 static std::string path_join(const std::string& a, const std::string& b) {
     if (a.empty()) return b;
     if (b.empty()) return a;
-    char last = a.back();
-    if (last == '\\' || last == '/') return a + b;
-    return a + "\\" + b;
+
+    std::string result = a;
+
+    char last = result.back();
+    if (last != '/' && last != '\\')
+        result += '/';
+
+    result += b;
+
+    std::replace(result.begin(), result.end(), '\\', '/');
+
+    return result;
 }
 
 static bool readTextFile(const char* path, std::string& out) {
@@ -243,6 +252,18 @@ static void schedule_sound_delete(ma_sound* s) {
     gPendingDelete.push_back(s);
 }
 
+static std::string normalize(const std::string& s) {
+    std::string r = s;
+    std::transform(r.begin(), r.end(), r.begin(), ::tolower);
+
+    // quitar espacios extra
+    r.erase(std::remove_if(r.begin(), r.end(), ::isspace), r.end());
+
+    return r;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // SECUENCIADOR DE CANCION
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -281,38 +302,86 @@ static bool json_extract_bool(const std::string& txt, const char* key, bool& out
 }
 
 static bool json_extract_int(const std::string& txt, const char* key, int& out) {
-    std::regex re(std::string("\"") + key + R"("\s*:\s*(-?\d+))");
+    //std::regex re(std::string("\"") + key + R"("\s*:\s*(-?\d+))");
+    std::regex re(std::string("\"") + key + R"("\s*:\s*([-+]?\d*\.?\d+))");
+
     std::smatch m;
     if (std::regex_search(txt, m, re) && m.size() >= 2) {
-        out = std::stoi(m[1].str());
+        //out = std::stoi(m[1].str());
+        out = (int)std::stod(m[1].str());
         return true;
     }
     return false;
 }
 
+
 static bool json_extract_events(const std::string& txt, std::vector<SongEvent>& out) {
+
+    size_t pos = txt.find("\"events\"");
+    if (pos == std::string::npos) return false;
+
+    pos = txt.find('[', pos);
+    if (pos == std::string::npos) return false;
+
+    size_t end = txt.find(']', pos);
+    if (end == std::string::npos) return false;
+
+    std::string block = txt.substr(pos + 1, end - pos - 1);
+
     out.clear();
-    const std::regex reFile(R"(\{\s*\"file\"\s*:\s*\"([^\"]+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*\})");
-    const std::regex reNote(R"(\{\s*\"note\"\s*:\s*\"([A-Ga-g][#b]?\-?\d+)\"\s*,\s*\"beat\"\s*:\s*([-+]?\d*\.?\d+)\s*(?:,\s*\"dur\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"vel\"\s*:\s*([-+]?\d*\.?\d+))?\s*(?:,\s*\"bus\"\s*:\s*(\d+))?\s*(?:,\s*\"instr\"\s*:\s*\"([^\"]+)\")?\s*\})");
-    for (auto it = std::sregex_iterator(txt.begin(), txt.end(), reFile); it != std::sregex_iterator(); ++it) {
+
+    size_t i = 0;
+    while (i < block.size()) {
+
+        size_t start = block.find('{', i);
+        if (start == std::string::npos) break;
+
+        int depth = 1;
+        size_t j = start + 1;
+
+        while (j < block.size() && depth > 0) {
+            if (block[j] == '{') depth++;
+            else if (block[j] == '}') depth--;
+            j++;
+        }
+
+        if (depth != 0) break;
+
+        std::string obj = block.substr(start, j - start);
+        i = j;
+
         SongEvent ev;
-        ev.path = (*it)[1].str();
-        ev.offsetBeat = std::stod((*it)[2].str());
-        if ((*it).size() >= 3 && (*it)[3].matched) ev.dur = std::stod((*it)[3].str());
-        if ((*it).size() >= 4 && (*it)[4].matched) ev.vel = (float)std::stod((*it)[4].str());
-        if ((*it).size() >= 5 && (*it)[5].matched) ev.bus = std::stoi((*it)[5].str());
+        std::smatch m;
+
+        std::regex reFile("\"file\"\\s*:\\s*\"([^\"]+)\"", std::regex::icase);
+        std::regex reNote("\"note\"\\s*:\\s*\"([^\"]+)\"", std::regex::icase);
+        std::regex reBeat("\"beat\"\\s*:\\s*([-+]?\\d*\\.?\\d+)", std::regex::icase);
+        std::regex reDur("\"dur\"\\s*:\\s*([-+]?\\d*\\.?\\d+)", std::regex::icase);
+        std::regex reVel("\"vel\"\\s*:\\s*([-+]?\\d*\\.?\\d+)", std::regex::icase);
+        std::regex reBus("\"bus\"\\s*:\\s*([-+]?\\d*\\.?\\d+)", std::regex::icase);
+        std::regex reInstr("\"instr\"\\s*:\\s*\"([^\"]+)\"", std::regex::icase);
+
+        if (!std::regex_search(obj, m, reBeat)) continue;
+        ev.offsetBeat = std::stod(m[1].str());
+
+        if (std::regex_search(obj, m, reDur)) ev.dur = std::stod(m[1].str());
+        if (std::regex_search(obj, m, reVel)) ev.vel = (float)std::stod(m[1].str());
+        if (std::regex_search(obj, m, reBus)) ev.bus = (int)std::stod(m[1].str());
+        if (std::regex_search(obj, m, reInstr)) ev.instrName = m[1].str();
+
+        if (std::regex_search(obj, m, reFile)) {
+            ev.path = m[1].str();
+        }
+        else if (std::regex_search(obj, m, reNote)) {
+            ev.path = std::string("|NOTE:") + m[1].str();
+        }
+        else {
+            continue;
+        }
+
         out.push_back(ev);
     }
-    for (auto it = std::sregex_iterator(txt.begin(), txt.end(), reNote); it != std::sregex_iterator(); ++it) {
-        SongEvent ev;
-        ev.path = std::string("NOTE:") + (*it)[1].str();
-        ev.offsetBeat = std::stod((*it)[2].str());
-        if ((*it).size() >= 3 && (*it)[3].matched) ev.dur = std::stod((*it)[3].str());
-        if ((*it).size() >= 4 && (*it)[4].matched) ev.vel = (float)std::stod((*it)[4].str());
-        if ((*it).size() >= 5 && (*it)[5].matched) ev.bus = std::stoi((*it)[5].str());
-        if ((*it).size() >= 7 && (*it)[6].matched) ev.instrName = (*it)[6].str();
-        out.push_back(ev);
-    }
+
     return !out.empty();
 }
 
@@ -789,6 +858,7 @@ extern "C" {
                 while (beat + 1e-6 >= ev.nextBeat) {
                     // Tocar
                     if (ev.sound) {
+                        ma_sound_stop(ev.sound);
                         ma_sound_seek_to_pcm_frame(ev.sound, 0);
                         ma_sound_start(ev.sound);
                     }
@@ -865,7 +935,11 @@ extern "C" {
                     }
 
                     // Programar proximo
-                    ev.nextBeat += gSong.beatsPerBar;
+                    //double songLenBeats = (double)gSong.beatsPerBar * (double)gSong.bars;
+                    //ev.nextBeat += songLenBeats;
+                    //ev.nextBeat = ev.offsetBeat + gSong.startBeat + k * songLenBeats;
+
+                    ev.nextBeat += gSong.beatsPerBar * gSong.bars;
 
                     // Si no hay loop y nos pasamos del final de la cancion, desactivamos este evento
                     if (!gSong.loop && (ev.nextBeat - gSong.startBeat) >= songLenBeats + 1e-6) {
@@ -884,174 +958,222 @@ extern "C" {
     ////////////////////////////////////////////////////////////////////////////////////////
 
     __declspec(dllexport) double gm_audio_song_load_file(const char* pathJson) {
-        if (!gEngineIniciado || pathJson == nullptr) return 0.0;
-        std::lock_guard<std::mutex> lock(gMutex);
-        std::string txt;
-        if (!readTextFile(pathJson, txt)) return 0.0;
-        std::string baseDir = path_dirname(pathJson);
+    if (!gEngineIniciado || pathJson == nullptr) return 0.0;
+    std::lock_guard<std::mutex> lock(gMutex);
 
-        // Parametros por defecto
-        int beatsPerBar = 4;
-        int bars = 1;
-        bool loop = true;
-        json_extract_int(txt, "beatsPerBar", beatsPerBar);
-        json_extract_int(txt, "bars", bars);
-        json_extract_bool(txt, "loop", loop);
+    std::string txt;
+    if (!readTextFile(pathJson, txt)) return 0.0;
+    std::string baseDir = path_dirname(pathJson);
 
-        double parsedBpm;
-        if (json_extract_bpm(txt, parsedBpm) && parsedBpm > 0.0) {
-            double current = transport_get_beat_unlocked();
-            gTransport.bpm.store(parsedBpm);
-            if (gTransport.playing.load()) {
-                gTransport.baseBeat = current;
-                gTransport.startTime = std::chrono::high_resolution_clock::now();
-            }
-            else {
-                gTransport.baseBeat = 0.0;
-            }
+    int beatsPerBar = 4;
+    int bars = 1;
+    bool loop = true;
+
+    json_extract_int(txt, "beatsPerBar", beatsPerBar);
+    json_extract_int(txt, "bars", bars);
+    json_extract_bool(txt, "loop", loop);
+
+    double parsedBpm;
+    if (json_extract_bpm(txt, parsedBpm) && parsedBpm > 0.0) {
+        double current = transport_get_beat_unlocked();
+        gTransport.bpm.store(parsedBpm);
+        if (gTransport.playing.load()) {
+            gTransport.baseBeat = current;
+            gTransport.startTime = std::chrono::high_resolution_clock::now();
+        } else {
+            gTransport.baseBeat = 0.0;
         }
-
-        std::vector<SongEvent> evs;
-        if (!json_extract_events(txt, evs)) return 0.0;
-
-        // Liberar cancion previa
-        for (auto& ev : gSong.events) {
-            if (ev.sound) {
-                remove_sound_ptr_from_bus_locked(ev.sound);
-                schedule_sound_delete(ev.sound);
-                ev.sound = nullptr;
-            }
-        }
-        gSong = Song{};
-        gInstruments.clear();
-
-        ensure_master_bus_locked();
-
-        std::vector<SongEvent> loadedEvents;
-        loadedEvents.reserve(evs.size());
-
-        std::regex reInstr(R"("instrument"\s*:\s*\{\s*\"file\"\s*:\s*\"([^\"]+)\"(?:\s*,\s*\"baseNote\"\s*:\s*([-]?\d+))?(?:\s*,\s*\"tuningHz\"\s*:\s*([0-9.]+))?)", std::regex::icase);
-        std::smatch mInstr;
-        std::string globalInstrFile;
-        int globalBaseNote = 60;
-        double globalTuningHz = 440.0;
-        if (std::regex_search(txt, mInstr, reInstr)) {
-            if (mInstr.size() >= 2 && mInstr[1].matched) globalInstrFile = mInstr[1].str();
-            if (mInstr.size() >= 3 && mInstr[2].matched) globalBaseNote = std::stoi(mInstr[2].str());
-            if (mInstr.size() >= 4 && mInstr[3].matched) globalTuningHz = std::stod(mInstr[3].str());
-            if (!globalInstrFile.empty()) {
-                Instrument ins;
-                ins.file = globalInstrFile;
-                ins.baseNote = globalBaseNote;
-                ins.tuningHz = globalTuningHz;
-                gInstruments["__default__"] = ins;
-            }
-        }
-
-        std::regex reInstrArray(R"("instruments"\s*:\s*\[([^\]]+)\])", std::regex::icase);
-        std::smatch mArray;
-        if (std::regex_search(txt, mArray, reInstrArray) && mArray.size() >= 2) {
-            std::string arrBody = mArray[1].str();
-            std::regex reItem(R"(\{\s*\"name\"\s*:\s*\"([^\"]+)\"\s*,\s*\"file\"\s*:\s*\"([^\"]+)\"(?:\s*,\s*\"baseNote\"\s*:\s*([-]?\d+))?(?:\s*,\s*\"tuningHz\"\s*:\s*([0-9.]+))?\s*\})", std::regex::icase);
-            for (auto it = std::sregex_iterator(arrBody.begin(), arrBody.end(), reItem); it != std::sregex_iterator(); ++it) {
-                std::smatch mi = *it;
-                if (mi.size() >= 3 && mi[1].matched && mi[2].matched) {
-                    Instrument ins;
-                    std::string name = mi[1].str();
-                    ins.file = mi[2].str();
-                    if (mi.size() >= 4 && mi[3].matched) ins.baseNote = std::stoi(mi[3].str());
-                    if (mi.size() >= 5 && mi[4].matched) ins.tuningHz = std::stod(mi[4].str());
-                    gInstruments[name] = ins;
-                }
-            }
-        }
-
-        for (auto& ev : evs) {
-            if (ev.path.rfind("NOTE:", 0) == 0) {
-                std::string noteTail = ev.path.substr(5);
-                std::string noteStr = noteTail;
-                SongEvent sev;
-                sev.sound = nullptr;
-                sev.offsetBeat = ev.offsetBeat;
-                sev.active = true;
-                sev.dur = ev.dur;
-                sev.vel = ev.vel;
-                sev.bus = ev.bus;
-                std::string instrToUse;
-                if (!ev.instrName.empty()) instrToUse = ev.instrName;
-                else if (gInstruments.find("__default__") != gInstruments.end()) instrToUse = "__default__";
-
-                if (instrToUse.empty()) {
-                    for (auto& le : loadedEvents) {
-                        if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
-                    }
-                    return 0.0;
-                }
-
-                auto git = gInstruments.find(instrToUse);
-                if (git == gInstruments.end()) {
-                    for (auto& le : loadedEvents) {
-                        if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
-                    }
-                    return 0.0;
-                }
-                Instrument ins = git->second;
-                std::string instrFullPath = path_join(baseDir, ins.file);
-                std::ostringstream meta;
-                meta << instrFullPath << "|NOTE:" << noteStr << "|BASE:" << ins.baseNote << "|TUN:" << ins.tuningHz;
-                sev.path = meta.str();
-                loadedEvents.push_back(sev);
-            }
-            else {
-                ma_sound* s = new ma_sound();
-                std::string fullPath = path_join(baseDir, ev.path);
-                if (ma_sound_init_from_file(&gEngine, fullPath.c_str(), 0, NULL, NULL, s) != MA_SUCCESS) {
-                    delete s;
-                    for (auto& le : loadedEvents) {
-                        if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
-                    }
-                    return 0.0;
-                }
-                SongEvent sev;
-                sev.path = fullPath;
-                sev.sound = s;
-                sev.offsetBeat = ev.offsetBeat;
-                sev.nextBeat = 0.0;
-                sev.dur = ev.dur;
-                sev.vel = ev.vel;
-                sev.active = true;
-                sev.bus = ev.bus;
-                ensure_master_bus_locked();
-                int busId = sev.bus;
-                if (gBuses.find(busId) == gBuses.end()) {
-                    Bus nb; nb.id = busId; nb.name = "bus" + std::to_string(busId); nb.volume = 1.0f; nb.pan = 0.0f; nb.mute = false;
-                    gBuses[busId] = nb;
-                }
-                gBuses[busId].sourceSounds.emplace_back(sev.sound, sev.vel);
-                float busVol = gBuses[busId].mute ? 0.0f : gBuses[busId].volume;
-                ma_sound_set_volume(sev.sound, (float)sev.vel * busVol);
-
-                float busPan = gBuses[busId].pan;
-                if (busPan < -1.0f) busPan = -1.0f;
-                if (busPan > 1.0f) busPan = 1.0f;
-                ma_sound_set_pan(sev.sound, busPan);
-
-
-                loadedEvents.push_back(sev);
-            }
-        }
-
-        gSong.loaded = true;
-        gSong.loop = loop;
-        gSong.beatsPerBar = (beatsPerBar > 0) ? beatsPerBar : 4;
-        gSong.bars = (bars > 0) ? bars : 1;
-        gSong.events = std::move(loadedEvents);
-        return 1.0;
     }
+
+    std::vector<SongEvent> evs;
+    if (!json_extract_events(txt, evs)) return 0.0;
+
+    for (auto& ev : gSong.events) {
+        if (ev.sound) {
+            remove_sound_ptr_from_bus_locked(ev.sound);
+            schedule_sound_delete(ev.sound);
+            ev.sound = nullptr;
+        }
+    }
+
+    gSong = Song{};
+    gInstruments.clear();
+
+    ensure_master_bus_locked();
+
+    std::vector<SongEvent> loadedEvents;
+    loadedEvents.reserve(evs.size());
+
+    std::regex reInstrBlock(R"("instrument"\s*:\s*\{([^}]*)\})", std::regex::icase);
+    std::smatch mInstrBlock;
+
+    if (std::regex_search(txt, mInstrBlock, reInstrBlock)) {
+        std::string obj = mInstrBlock[1].str();
+
+        std::regex reFile(R"("file"\s*:\s*"([^"]+))");
+        std::regex reBase(R"("baseNote"\s*:\s*([-+]?\d*\.?\d+))");
+        std::regex reTune(R"("tuningHz"\s*:\s*([-+]?\d*\.?\d+))");
+
+        std::smatch m;
+        Instrument ins;
+
+        if (std::regex_search(obj, m, reFile)) ins.file = m[1].str();
+        if (std::regex_search(obj, m, reBase)) ins.baseNote = (int)std::stod(m[1].str());
+        if (std::regex_search(obj, m, reTune)) ins.tuningHz = std::stod(m[1].str());
+
+        if (!ins.file.empty()) {
+            gInstruments["__default__"] = ins;
+        }
+    }
+
+    std::regex reInstrArray(R"("instruments"\s*:\s*\[([\s\S]*?)\])", std::regex::icase);
+    std::smatch mArray;
+
+    if (std::regex_search(txt, mArray, reInstrArray) && mArray.size() >= 2) {
+        std::string arrBody = mArray[1].str();
+        std::regex reObj(R"(\{[^}]*\})");
+
+        for (auto it = std::sregex_iterator(arrBody.begin(), arrBody.end(), reObj);
+             it != std::sregex_iterator(); ++it) {
+
+            std::string obj = (*it).str();
+
+            std::regex reName(R"xxx("name"\s*:\s*"([^"]+)")xxx");
+            std::regex reFile(R"xxx("file"\s*:\s*"([^"]+)")xxx");
+            std::regex reBase(R"xxx("baseNote"\s*:\s*([-+]?\d*\.?\d+))xxx");
+            std::regex reTune(R"xxx("tuningHz"\s*:\s*([-+]?\d*\.?\d+))xxx");
+
+            std::smatch m;
+            std::string name;
+            Instrument ins;
+
+            if (std::regex_search(obj, m, reName)) name = m[1].str();
+            if (std::regex_search(obj, m, reFile)) ins.file = m[1].str();
+            if (std::regex_search(obj, m, reBase)) ins.baseNote = (int)std::stod(m[1].str());
+            if (std::regex_search(obj, m, reTune)) ins.tuningHz = std::stod(m[1].str());
+
+            if (!name.empty() && !ins.file.empty()) {
+                gInstruments[normalize(name)] = ins;
+            }
+        }
+    }
+
+    for (auto& ev : evs) {
+        if (ev.path.find("|NOTE:") != std::string::npos) {
+            std::string noteStr = ev.path.substr(6);
+
+            SongEvent sev;
+            sev.sound = nullptr;
+            sev.offsetBeat = ev.offsetBeat;
+            sev.active = true;
+            sev.dur = ev.dur;
+            sev.vel = ev.vel;
+            sev.bus = ev.bus;
+
+            std::string instrToUse;
+            if (!ev.instrName.empty()) instrToUse = ev.instrName;
+            else if (gInstruments.find("__default__") != gInstruments.end()) instrToUse = "__default__";
+
+            if (instrToUse.empty()) {
+                for (auto& le : loadedEvents) {
+                    if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
+                }
+                return 0.0;
+            }
+
+            auto git = gInstruments.find(normalize(instrToUse));
+            if (git == gInstruments.end()) {
+                for (auto& le : loadedEvents) {
+                    if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
+                }
+                return 0.0;
+            }
+
+            Instrument ins = git->second;
+            std::string instrFullPath = path_join(baseDir, ins.file);
+
+            std::ostringstream meta;
+            meta << instrFullPath << "|NOTE:" << noteStr
+                 << "|BASE:" << ins.baseNote
+                 << "|TUN:" << ins.tuningHz;
+
+            sev.path = meta.str();
+            loadedEvents.push_back(sev);
+        } else {
+            ma_sound* s = new ma_sound();
+            std::string fullPath = path_join(baseDir, ev.path);
+
+            if (ma_sound_init_from_file(&gEngine, fullPath.c_str(), 0, NULL, NULL, s) != MA_SUCCESS) {
+                delete s;
+                for (auto& le : loadedEvents) {
+                    if (le.sound) { schedule_sound_delete(le.sound); le.sound = nullptr; }
+                }
+                return 0.0;
+            }
+
+            SongEvent sev;
+            sev.path = fullPath;
+            sev.sound = s;
+            sev.offsetBeat = ev.offsetBeat;
+            sev.nextBeat = ev.offsetBeat;
+            sev.dur = ev.dur;
+            sev.vel = ev.vel;
+            sev.active = true;
+            sev.bus = ev.bus;
+
+            ensure_master_bus_locked();
+
+            int busId = sev.bus;
+            if (gBuses.find(busId) == gBuses.end()) {
+                Bus nb;
+                nb.id = busId;
+                nb.name = "bus" + std::to_string(busId);
+                nb.volume = 1.0f;
+                nb.pan = 0.0f;
+                nb.mute = false;
+                gBuses[busId] = nb;
+            }
+
+            gBuses[busId].sourceSounds.emplace_back(sev.sound, sev.vel);
+
+            float busVol = gBuses[busId].mute ? 0.0f : gBuses[busId].volume;
+            ma_sound_set_volume(sev.sound, (float)sev.vel * busVol);
+
+            float busPan = gBuses[busId].pan;
+            if (busPan < -1.0f) busPan = -1.0f;
+            if (busPan > 1.0f) busPan = 1.0f;
+            ma_sound_set_pan(sev.sound, busPan);
+
+            loadedEvents.push_back(sev);
+        }
+    }
+
+    gSong.loaded = true;
+    gSong.loop = loop;
+    gSong.beatsPerBar = (beatsPerBar > 0) ? beatsPerBar : 4;
+    gSong.bars = (bars > 0) ? bars : 1;
+    gSong.events = std::move(loadedEvents);
+
+    return 1.0;
+}
 
     __declspec(dllexport) double gm_audio_song_play() {
         std::lock_guard<std::mutex> lock(gMutex);
+
+        // LIMPIEZA anti solapamientos
+        gPendingStops.clear();
+        for (auto& av : gActiveVoices) {
+            if (av.sound) {
+                ma_sound_stop(av.sound);
+                schedule_sound_delete(av.sound);
+            }
+        }
+        gActiveVoices.clear();
+
+
         if (!gEngineIniciado || !gSong.loaded) return 0.0;
+        if (gSong.startBeat != 0.0)
+            return 1.0;
         if (!gTransport.playing.load()) {
             gTransport.startTime = std::chrono::high_resolution_clock::now();
             gTransport.playing.store(true);
@@ -1070,6 +1192,9 @@ extern "C" {
     __declspec(dllexport) double gm_audio_song_stop() {
         std::lock_guard<std::mutex> lock(gMutex);
         if (!gSong.loaded) return 1.0;
+
+        gSong.startBeat = 0.0;
+
         for (auto& ev : gSong.events) {
             if (ev.sound) ma_sound_stop(ev.sound);
             ev.active = false;
@@ -1108,6 +1233,8 @@ extern "C" {
             }
             gPendingDelete.clear();
         }
+
+        gSong.loaded = false;
 
         return 1.0;
     }
