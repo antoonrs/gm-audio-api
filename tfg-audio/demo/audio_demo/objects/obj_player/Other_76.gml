@@ -17,8 +17,10 @@ if (_message == "footstep")
 	_effect.image_xscale = image_xscale;
 
 	// Choose a random sound to play on footstep
-	var _sound = choose(snd_footstep_01, snd_footstep_02, snd_footstep_03);
+	//var _sound = choose(snd_footstep_01, snd_footstep_02, snd_footstep_03);
 
 	// Play that sound
-	audio_play_sound(_sound, 0, 0);
+	//audio_play_sound(_sound, 0, 0);
+	
+	
 }

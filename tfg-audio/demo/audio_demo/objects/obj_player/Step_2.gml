@@ -54,7 +54,7 @@ switch (sprite_index)
 			image_speed = 1;
 		
 			// Play the landing sound effect
-			audio_play_sound(snd_land_01, 0, 0);
+external_call(global.ext.play, "snd_land_01.wav")
 		}
 		break;
 

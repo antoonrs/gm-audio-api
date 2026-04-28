@@ -6,7 +6,21 @@ coins += 1;
 instance_create_layer(other.x, other.y, "Instances", obj_coin_collect_effect);
 
 // Play the coin collect sound
-audio_play_sound(snd_coin_collect_01, 0, 0);
+external_call(global.ext.play, "snd_coin_collect.wav")
 
 // Destroy the 'other' instance, which is the coin.
 instance_destroy(other);
+
+
+if coins>5
+{obj_audio_in_game.fase=1}
+if coins>10
+{obj_audio_in_game.fase=2}
+if coins>15
+{obj_audio_in_game.fase=3}
+if coins>20
+{obj_audio_in_game.fase=4}
+if coins>25
+{obj_audio_in_game.fase=5}
+
+show_debug_log(obj_audio_in_game.fase)

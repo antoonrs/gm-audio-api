@@ -1,3 +1,6 @@
+if keyboard_check(vk_control) and keyboard_check_pressed(ord("Q"))
+{game_restart()}
+
 var beat = external_call(global.ext.getBeat)
 
 load_timer += 1

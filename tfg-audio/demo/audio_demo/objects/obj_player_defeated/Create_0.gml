@@ -14,4 +14,4 @@ alarm[0] = 30;
 audio_stop_all();
 
 // Play the lose sound effect
-audio_play_sound(snd_music_lose, 0, 0);
+//audio_play_sound(snd_music_lose, 0, 0);

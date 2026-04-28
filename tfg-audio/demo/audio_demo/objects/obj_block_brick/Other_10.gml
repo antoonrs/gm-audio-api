@@ -9,7 +9,7 @@ instance_create_layer(x + 0, y + 0, layer, obj_block_brick_destroy);
 // Choose a random block hit sound and play it
 var _sound = choose(snd_dirt_block_hit_01, snd_dirt_block_hit_02, snd_dirt_block_hit_02);
 
-audio_play_sound(_sound, 0, 0);
+external_call(global.ext.play, "snd_dirt_block_hit_01.wav")
 
 // Destroy the brick block
 instance_destroy();

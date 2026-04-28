@@ -1,6 +1,10 @@
 // This runs the Create event of the parent, ensuring the player gets all variables from the character parent.
 event_inherited();
 
+instance_create_depth(x,y,0,obj_audio_in_game)
+
+
+
 // This variable stores the number of coins the player has collected.
 coins = 0;
 
@@ -35,9 +39,7 @@ player_jump = function()
 		// jump VFX animation.
 		instance_create_layer(x, bbox_bottom, "Instances", obj_effect_jump);
 	
-		// Play the jump sound with a random pitch
-		var _sound = audio_play_sound(snd_jump, 0, 0);
-		audio_sound_pitch(_sound, random_range(0.8, 1));
+        external_call(global.ext.play, "snd_jump.wav")
 	}
 	
 	// Sets jump flag back to false

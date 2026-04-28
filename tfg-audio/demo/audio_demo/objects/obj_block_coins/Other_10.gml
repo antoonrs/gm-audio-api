@@ -2,7 +2,7 @@
 event_inherited();
 
 // Play the 'box hit' sound
-audio_play_sound(snd_box_hit, 0, 0);
+external_call(global.ext.play, "snd_box_hit.wav")
 
 // If the block is already inactive,
 if (sprite_index == spr_block_coins_inactive)
@@ -16,7 +16,7 @@ if (sprite_index == spr_block_coins_inactive)
 hits_left -= 1;
 
 // Play the 'box get' sound
-audio_play_sound(snd_box_get, 0, 0);
+external_call(global.ext.play, "snd_box_get.wav")
 
 // If the block is out of hits,
 if (hits_left <= 0)

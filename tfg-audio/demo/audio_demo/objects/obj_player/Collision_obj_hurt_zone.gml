@@ -24,5 +24,5 @@ if (hp > 0)
 	alarm[0] = 20;
 
 	// Play the 'life lost' sound effect
-	audio_play_sound(snd_life_lost_01, 0, 0);
+	//audio_play_sound(snd_life_lost_01, 0, 0);
 }

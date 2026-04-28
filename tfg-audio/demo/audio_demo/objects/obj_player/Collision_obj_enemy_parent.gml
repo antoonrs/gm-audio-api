@@ -30,11 +30,13 @@ if (vel_y > 0)
 		instance_create_layer(x, bbox_bottom, "Instances", obj_effect_jump);
 	
 		// Play the enemy hit sound effect
-		audio_play_sound(snd_enemy_hit, 0, 0);
+		
+		
+external_call(global.ext.play, "snd_enemy_hit.wav")
 		
 		// Play the jump sound with a random pitch
-		var _sound = audio_play_sound(snd_jump, 0, 0);
-		audio_sound_pitch(_sound, random_range(0.8, 1));
+		//var _sound = //audio_play_sound(snd_jump, 0, 0);
+		//audio_sound_pitch(_sound, random_range(0.8, 1));
 	
 		// Finally, exit the event so the rest of the actions don't run (they make the player hurt)
 		exit;
@@ -72,4 +74,4 @@ image_index = 0;
 alarm[0] = 15;
 
 // Play the 'life lost' sound effect
-audio_play_sound(snd_life_lost_01, 0, 0);
+//audio_play_sound(snd_life_lost_01, 0, 0);

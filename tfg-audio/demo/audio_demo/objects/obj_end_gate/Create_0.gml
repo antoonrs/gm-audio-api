@@ -8,16 +8,16 @@ var _particle_instance = instance_create_layer(x, y, layer, obj_end_gate_particl
 _particle_instance.depth = depth - 10;
 
 // Create an audio emitter for the end gate's ambient audio
-emitter = audio_emitter_create();
+//emitter = audio_emitter_create();
 
 // Set the position of the emitter to the position of the instance
-audio_emitter_position(emitter, x, y, 0);
+//audio_emitter_position(emitter, x, y, 0);
 
 // Set the falloff settings for the audio emitter
-audio_emitter_falloff(emitter, 1000, 1400, 1);
+//audio_emitter_falloff(emitter, 1000, 1400, 1);
 
 // Play a looping portal ambience sound on the emitter
-audio_play_sound_on(emitter, snd_portal_01, true, 1);
+//audio_play_sound_on(emitter, snd_portal_01, true, 1);
 
 // Play a looping portal ambience sound on the emitter
-audio_play_sound_on(emitter, snd_portal_02, true, 1);
+//audio_play_sound_on(emitter, snd_portal_02, true, 1);

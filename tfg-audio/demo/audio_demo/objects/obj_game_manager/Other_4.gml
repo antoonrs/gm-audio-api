@@ -1,6 +1,7 @@
 // Get the CollisionTiles layer tilemap ID
 collision_tilemap = layer_tilemap_get_id("CollisionTiles");
 
+/*
 // Play music track with looping enabled
 audio_play_sound(snd_music_level, 0, 1);
 

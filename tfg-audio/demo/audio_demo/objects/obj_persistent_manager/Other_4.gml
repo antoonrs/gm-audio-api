@@ -1,4 +1,5 @@
 // If we're in the end room
+/*
 if (room == rm_end)
 {
 	// Play music track with looping enabled

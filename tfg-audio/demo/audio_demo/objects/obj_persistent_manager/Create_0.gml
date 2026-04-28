@@ -14,6 +14,7 @@ if (os_browser != browser_not_a_browser)
 	display_set_gui_size(1920, 1080);
 }
 
+/*
 // Play music track with looping enabled
 audio_play_sound(snd_music_level, 0, true);
 
