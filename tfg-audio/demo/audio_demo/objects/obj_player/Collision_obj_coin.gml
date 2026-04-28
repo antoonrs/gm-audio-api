@@ -22,5 +22,3 @@ if coins>20
 {obj_audio_in_game.fase=4}
 if coins>25
 {obj_audio_in_game.fase=5}
-
-show_debug_log(obj_audio_in_game.fase)
