@@ -1,5 +1,9 @@
 # GameMaker Audio API – TFG
 
+<p align="center">
+  <img src="tfg-audio/other/Logo.png" width="250">
+</p>
+
 Este proyecto consiste en el desarrollo de una API de audio en C/C++ pensada para integrarse con GameMaker, con el objetivo de ofrecer un sistema más flexible y musicalmente coherente que el audio nativo del motor, así como ofrecer nuevas funcionalidades de creación musical directa.
 
 La idea principal no es solo reproducir sonidos, sino trabajar con conceptos musicales como tempo, beats, cuantización o eventos sincronizados, algo especialmente útil en videojuegos donde el audio tiene un papel dinámico y que resulte familiar para gente que se dedique a la música.
