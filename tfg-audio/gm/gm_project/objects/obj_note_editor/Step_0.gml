@@ -366,6 +366,21 @@ if (mlp) {
 if (preview_playing) {
 
     var current_beat = external_call(global.ext.getBeat)
+	
+	    ///// AUTO MOVIMIENTO
+    var margin_beats = viewport_beats * 0.3 // margen de 30%
+
+    var target_scroll = current_beat - margin_beats
+
+    if (target_scroll < 0) target_scroll = 0
+	
+    var max_scroll = max(0, total_beats - viewport_beats)
+    if (target_scroll > max_scroll) target_scroll = max_scroll
+
+    // LERP
+    ctrl.scroll_beats = lerp(ctrl.scroll_beats, target_scroll, 0.2)
+	
+	
 
     var instr_name = string(ctrl.instruments[instr_index].name)
 

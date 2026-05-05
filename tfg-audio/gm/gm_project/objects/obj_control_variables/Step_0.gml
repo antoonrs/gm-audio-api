@@ -102,3 +102,31 @@ if (scroll_enabled) {
 
 if (scroll_beats < 0) scroll_beats = 0
 if (scroll_beats > denom_scroll) scroll_beats = denom_scroll
+
+
+
+
+///// AUTO MOVIMIENTO
+var mm = instance_find(obj_main_menu, 0)
+
+if (mm != noone && mm.song_playing) {
+
+    var beat = external_call(global.ext.getBeat)
+
+    var total_beats = max(1, real(bars) * real(beatsPerBar))
+
+    var viewport_beats = (room_width - scrollbar_side_margin*2) / real(px_per_beat)
+
+    var margin = viewport_beats * 0.3 // margen de 30%
+
+    var target = beat - margin
+
+    if (target < 0) target = 0
+
+    var max_scroll = max(0, total_beats - viewport_beats)
+    if (target > max_scroll) target = max_scroll
+
+    scroll_beats = lerp(scroll_beats, target, 0.2)
+	
+	
+}
